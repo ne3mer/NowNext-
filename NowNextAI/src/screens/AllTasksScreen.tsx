@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryTabs } from '../components/CategoryTabs';
 import { TaskCard } from '../components/TaskCard';
 import { useTaskStore } from '../store/taskStore';
@@ -7,6 +8,7 @@ import { TaskCategory } from '../types/task';
 import { ui } from '../theme/ui';
 
 export function AllTasksScreen() {
+  const insets = useSafeAreaInsets();
   const tasks = useTaskStore((state) => state.tasks);
   const hasHydrated = useTaskStore((state) => state.hasHydrated);
   const toggleTaskCompletion = useTaskStore((state) => state.toggleTaskCompletion);
@@ -21,7 +23,10 @@ export function AllTasksScreen() {
   }, [selectedCategory, tasks]);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + ui.spacing.lg }]}
+    >
       <Text style={styles.title}>All Tasks</Text>
       <Text style={styles.subtitle}>Browse by category and tap any card to complete it.</Text>
 

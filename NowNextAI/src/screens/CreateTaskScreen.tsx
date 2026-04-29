@@ -1,11 +1,23 @@
 import { useMemo, useState } from 'react';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTaskStore } from '../store/taskStore';
 import { ui } from '../theme/ui';
 import { TASK_CATEGORIES, TASK_PRIORITIES, TaskCategory, TaskPriority } from '../types/task';
 
 export function CreateTaskScreen() {
+  const insets = useSafeAreaInsets();
   const createTask = useTaskStore((state) => state.createTask);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
@@ -37,6 +49,7 @@ export function CreateTaskScreen() {
   }
 
   function onSubmit() {
+    Keyboard.dismiss();
     const normalizedTitle = title.trim();
     if (!normalizedTitle) {
       setError('Title is required.');
@@ -67,8 +80,14 @@ export function CreateTaskScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
     >
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + ui.spacing.lg }]}
+        keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={Keyboard.dismiss}
+      >
         <Text style={styles.title}>Create Task</Text>
         <Text style={styles.subtitle}>Capture it now and let NowNext guide your focus.</Text>
         <View style={styles.card}>
@@ -79,6 +98,8 @@ export function CreateTaskScreen() {
           placeholder="e.g. Prepare portfolio update"
           placeholderTextColor="#94a3b8"
           style={styles.input}
+          returnKeyType="done"
+          onSubmitEditing={Keyboard.dismiss}
         />
 
         <Text style={styles.label}>Category</Text>
@@ -145,6 +166,8 @@ export function CreateTaskScreen() {
           placeholderTextColor="#94a3b8"
           style={[styles.input, styles.noteInput]}
           multiline
+          returnKeyType="done"
+          onSubmitEditing={Keyboard.dismiss}
         />
 
         {!!error && <Text style={styles.errorText}>{error}</Text>}

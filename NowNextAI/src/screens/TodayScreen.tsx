@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NowSuggestionCard } from '../components/NowSuggestionCard';
 import { TaskCard } from '../components/TaskCard';
 import { useTaskStore } from '../store/taskStore';
@@ -7,6 +8,7 @@ import { ui } from '../theme/ui';
 import { getSuggestedTask } from '../utils/taskSuggestion';
 
 export function TodayScreen() {
+  const insets = useSafeAreaInsets();
   const tasks = useTaskStore((state) => state.tasks);
   const toggleTaskCompletion = useTaskStore((state) => state.toggleTaskCompletion);
   const hasHydrated = useTaskStore((state) => state.hasHydrated);
@@ -15,7 +17,10 @@ export function TodayScreen() {
   const suggestedTask = getSuggestedTask(tasks);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + ui.spacing.lg }]}
+    >
       <Text style={styles.title}>Today</Text>
       <Text style={styles.subtitle}>Your focused tasks and next suggestion.</Text>
 
