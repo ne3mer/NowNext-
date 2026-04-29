@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppTheme, useAppTheme } from '../theme/theme';
 import { Task } from '../types/task';
 
@@ -8,11 +8,13 @@ type TaskCardProps = {
   task: Task;
   parentTitle?: string | null;
   onToggleComplete?: (taskId: string) => void;
+  onDeleteTask?: (taskId: string) => void;
 };
 
-export function TaskCard({ task, parentTitle, onToggleComplete }: TaskCardProps) {
+export function TaskCard({ task, parentTitle, onToggleComplete, onDeleteTask }: TaskCardProps) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const [showActions, setShowActions] = useState(false);
   const categoryColor = theme.colors.category[task.category];
   const priorityColor = theme.colors.priority[task.priority];
   const horizonSteps = ['daily', 'weekly', 'monthly', 'yearly'];
@@ -21,9 +23,9 @@ export function TaskCard({ task, parentTitle, onToggleComplete }: TaskCardProps)
   return (
     <Pressable
       style={[styles.card, { backgroundColor: categoryColor }]}
-      onPress={() => onToggleComplete?.(task.id)}
+      onPress={() => setShowActions(true)}
       accessibilityRole="button"
-      accessibilityHint="Toggles task completion"
+      accessibilityHint="Opens task actions"
     >
       <View style={styles.headerRow}>
         <View style={styles.categoryRow}>
@@ -59,8 +61,43 @@ export function TaskCard({ task, parentTitle, onToggleComplete }: TaskCardProps)
           size={14}
           color={theme.colors.textSecondary}
         />
-        <Text style={styles.tapHint}>{task.completed ? 'Tap to mark as pending' : 'Tap to complete'}</Text>
+        <Text style={styles.tapHint}>Tap to open task actions</Text>
       </View>
+
+      <Modal visible={showActions} transparent animationType="fade" onRequestClose={() => setShowActions(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{task.title}</Text>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => {
+                setShowActions(false);
+                onToggleComplete?.(task.id);
+              }}
+            >
+              <Ionicons
+                name={task.completed ? 'refresh-circle-outline' : 'checkmark-circle-outline'}
+                size={16}
+                color={theme.colors.textPrimary}
+              />
+              <Text style={styles.actionText}>{task.completed ? 'Mark as pending' : 'Mark as completed'}</Text>
+            </Pressable>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => {
+                setShowActions(false);
+                onDeleteTask?.(task.id);
+              }}
+            >
+              <Ionicons name="trash-outline" size={16} color="#b91c1c" />
+              <Text style={[styles.actionText, styles.actionDanger]}>Delete task</Text>
+            </Pressable>
+            <Pressable style={styles.cancelButton} onPress={() => setShowActions(false)}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </Pressable>
   );
 }
@@ -153,6 +190,53 @@ function createStyles(theme: AppTheme) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.35)',
+      justifyContent: 'center',
+      padding: theme.spacing.lg,
+    },
+    modalCard: {
+      borderRadius: theme.radius.lg,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing.md,
+      gap: theme.spacing.sm,
+      ...theme.shadow.card,
+    },
+    modalTitle: {
+      color: theme.colors.textPrimary,
+      fontWeight: '700',
+      fontSize: 16,
+    },
+    actionButton: {
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    actionText: {
+      color: theme.colors.textPrimary,
+      fontWeight: '600',
+    },
+    actionDanger: {
+      color: '#b91c1c',
+    },
+    cancelButton: {
+      borderRadius: theme.radius.md,
+      paddingVertical: 10,
+      alignItems: 'center',
+    },
+    cancelText: {
+      color: theme.colors.textSecondary,
+      fontWeight: '600',
     },
   });
 }

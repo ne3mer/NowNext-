@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryTabs } from '../components/CategoryTabs';
 import { CompletionCelebration } from '../components/CompletionCelebration';
@@ -15,6 +15,7 @@ export function AllTasksScreen() {
   const tasks = useTaskStore((state) => state.tasks);
   const hasHydrated = useTaskStore((state) => state.hasHydrated);
   const toggleTaskCompletion = useTaskStore((state) => state.toggleTaskCompletion);
+  const deleteTask = useTaskStore((state) => state.deleteTask);
   const [celebrationTrigger, setCelebrationTrigger] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<TaskCategory | 'all'>('all');
   const tasksById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
@@ -33,6 +34,13 @@ export function AllTasksScreen() {
     if (target && !target.completed) {
       setCelebrationTrigger((prev) => prev + 1);
     }
+  }
+
+  function handleDelete(taskId: string) {
+    Alert.alert('Delete task', 'Are you sure you want to delete this task?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteTask(taskId) },
+    ]);
   }
 
   return (
@@ -58,6 +66,7 @@ export function AllTasksScreen() {
               task={task}
               parentTitle={task.parentTaskId ? tasksById.get(task.parentTaskId)?.title ?? null : null}
               onToggleComplete={handleToggle}
+              onDeleteTask={handleDelete}
             />
           ))}
         </View>
