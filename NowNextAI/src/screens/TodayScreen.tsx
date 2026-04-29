@@ -3,11 +3,12 @@ import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CompletionCelebration } from '../components/CompletionCelebration';
+import { GoalPulseCard } from '../components/GoalPulseCard';
 import { NowSuggestionCard } from '../components/NowSuggestionCard';
 import { TaskCard } from '../components/TaskCard';
 import { useTaskStore } from '../store/taskStore';
 import { AppTheme, useAppTheme } from '../theme/theme';
-import { chainToLabel, getTaskChain } from '../utils/taskLinks';
+import { chainToLabel, getTaskChain, getTopGoalPulse } from '../utils/taskLinks';
 import { getSuggestedTask } from '../utils/taskSuggestion';
 
 export function TodayScreen() {
@@ -23,6 +24,7 @@ export function TodayScreen() {
   const suggestedTask = getSuggestedTask(tasks);
   const tasksById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
   const suggestionChainLabel = suggestedTask ? chainToLabel(getTaskChain(suggestedTask, tasks)) : null;
+  const topGoalPulse = useMemo(() => getTopGoalPulse(tasks), [tasks]);
   const completionRate = tasks.length === 0 ? 0 : Math.round((completedTasks.length / tasks.length) * 100);
   const linkedTasksCount = tasks.filter((task) => !!task.parentTaskId).length;
   const linkRate = tasks.length === 0 ? 0 : Math.round((linkedTasksCount / tasks.length) * 100);
@@ -89,6 +91,8 @@ export function TodayScreen() {
       </View>
 
       <NowSuggestionCard task={suggestedTask} chainLabel={suggestionChainLabel} />
+
+      {!!topGoalPulse && <GoalPulseCard goalTitle={topGoalPulse.title} score={topGoalPulse.score} />}
 
       {!hasHydrated ? (
         <Text style={styles.stateText}>Loading your tasks...</Text>
