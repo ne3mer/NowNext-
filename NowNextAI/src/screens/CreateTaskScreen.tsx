@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTaskStore } from '../store/taskStore';
 import { ui } from '../theme/ui';
@@ -8,13 +9,32 @@ export function CreateTaskScreen() {
   const createTask = useTaskStore((state) => state.createTask);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
-  const [deadline, setDeadline] = useState('');
+  const [deadline, setDeadline] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [category, setCategory] = useState<TaskCategory>('daily');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const normalizedDeadline = useMemo(() => deadline.trim(), [deadline]);
+  const deadlineLabel = useMemo(() => {
+    if (!deadline) {
+      return 'No deadline selected';
+    }
+    return deadline.toLocaleDateString();
+  }, [deadline]);
+
+  function onChangeDeadline(event: DateTimePickerEvent, selectedDate?: Date) {
+    if (event.type === 'dismissed') {
+      setShowDatePicker(false);
+      return;
+    }
+
+    if (selectedDate) {
+      setDeadline(selectedDate);
+      setError(null);
+    }
+    setShowDatePicker(false);
+  }
 
   function onSubmit() {
     const normalizedTitle = title.trim();
@@ -24,17 +44,7 @@ export function CreateTaskScreen() {
       return;
     }
 
-    let deadlineIso: string | null = null;
-    if (normalizedDeadline) {
-      const matched = /^\d{4}-\d{2}-\d{2}$/.test(normalizedDeadline);
-      const parsed = matched ? new Date(`${normalizedDeadline}T23:59:59.000Z`) : null;
-      if (!parsed || Number.isNaN(parsed.getTime())) {
-        setError('Deadline format should be YYYY-MM-DD.');
-        setSuccessMessage(null);
-        return;
-      }
-      deadlineIso = parsed.toISOString();
-    }
+    const deadlineIso = deadline ? new Date(deadline).toISOString() : null;
 
     createTask({
       title: normalizedTitle,
@@ -46,7 +56,7 @@ export function CreateTaskScreen() {
 
     setTitle('');
     setNote('');
-    setDeadline('');
+    setDeadline(null);
     setCategory('daily');
     setPriority('medium');
     setError(null);
@@ -99,14 +109,28 @@ export function CreateTaskScreen() {
         </View>
 
         <Text style={styles.label}>Deadline (optional)</Text>
-        <TextInput
-          value={deadline}
-          onChangeText={setDeadline}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor="#94a3b8"
-          style={styles.input}
-          autoCapitalize="none"
-        />
+        <View style={styles.dateRow}>
+          <Pressable style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+            <Text style={styles.dateButtonText}>{deadline ? 'Change Date' : 'Pick a Date'}</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.dateButton, !deadline && styles.dateButtonDisabled]}
+            onPress={() => setDeadline(null)}
+            disabled={!deadline}
+          >
+            <Text style={styles.dateButtonText}>Clear</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.dateLabel}>{deadlineLabel}</Text>
+        {showDatePicker && (
+          <DateTimePicker
+            value={deadline ?? new Date()}
+            mode="date"
+            display="default"
+            onChange={onChangeDeadline}
+            minimumDate={new Date()}
+          />
+        )}
 
         <Text style={styles.label}>Note (optional)</Text>
         <TextInput
@@ -176,6 +200,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: ui.spacing.xs,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    gap: ui.spacing.xs,
+  },
+  dateButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: ui.colors.border,
+    borderRadius: ui.radius.md,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  dateButtonDisabled: {
+    opacity: 0.45,
+  },
+  dateButtonText: {
+    color: ui.colors.textPrimary,
+    fontWeight: '600',
+  },
+  dateLabel: {
+    marginTop: ui.spacing.xs,
+    color: ui.colors.textSecondary,
   },
   pill: {
     borderWidth: 1,
