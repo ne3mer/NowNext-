@@ -1,9 +1,12 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { OnboardingModal } from './src/components/OnboardingModal';
 import { AllTasksScreen } from './src/screens/AllTasksScreen';
 import { CreateTaskScreen } from './src/screens/CreateTaskScreen';
 import { TodayScreen } from './src/screens/TodayScreen';
@@ -16,8 +19,27 @@ type RootTabParamList = {
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
+const ONBOARDING_SEEN_KEY = 'nownext-onboarding-seen';
 
 export default function App() {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    async function checkOnboarding() {
+      const hasSeenOnboarding = await AsyncStorage.getItem(ONBOARDING_SEEN_KEY);
+      if (!hasSeenOnboarding) {
+        setShowOnboarding(true);
+      }
+    }
+
+    void checkOnboarding();
+  }, []);
+
+  async function closeOnboarding() {
+    await AsyncStorage.setItem(ONBOARDING_SEEN_KEY, 'true');
+    setShowOnboarding(false);
+  }
+
   return (
     <SafeAreaProvider>
       <NavigationContainer>
@@ -67,6 +89,7 @@ export default function App() {
             options={{ title: 'All Tasks' }}
           />
         </Tab.Navigator>
+        <OnboardingModal visible={showOnboarding} onClose={closeOnboarding} />
       </NavigationContainer>
     </SafeAreaProvider>
   );
