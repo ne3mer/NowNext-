@@ -1,13 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppTheme, useAppTheme } from '../theme/theme';
 import { Task } from '../types/task';
-import { ui } from '../theme/ui';
 
 type NowSuggestionCardProps = {
   task: Task | null;
 };
 
 export function NowSuggestionCard({ task }: NowSuggestionCardProps) {
+  const { theme, isDark } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
   const reasonText = task
     ? task.deadline
       ? 'Recommended because this task has strong priority and a close deadline.'
@@ -44,17 +47,18 @@ export function NowSuggestionCard({ task }: NowSuggestionCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme, isDark: boolean) {
+  return StyleSheet.create({
   container: {
-    borderRadius: ui.radius.lg,
-    backgroundColor: '#dbeafe',
-    padding: ui.spacing.md,
-    ...ui.shadow.card,
+    borderRadius: theme.radius.lg,
+    backgroundColor: isDark ? '#1e3a8a' : '#dbeafe',
+    padding: theme.spacing.md,
+    ...theme.shadow.card,
   },
   title: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1e3a8a',
+    color: isDark ? '#dbeafe' : '#1e3a8a',
   },
   titleRow: {
     flexDirection: 'row',
@@ -62,30 +66,31 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   subtitle: {
-    marginTop: ui.spacing.xs,
-    color: '#1d4ed8',
+    marginTop: theme.spacing.xs,
+    color: isDark ? '#bfdbfe' : '#1d4ed8',
   },
   meta: {
-    marginTop: ui.spacing.xs,
-    color: '#1e40af',
+    marginTop: theme.spacing.xs,
+    color: isDark ? '#dbeafe' : '#1e40af',
     fontWeight: '600',
     fontSize: 12,
   },
   metaRow: {
-    gap: ui.spacing.xs,
+    gap: theme.spacing.xs,
   },
   reason: {
-    color: '#1d4ed8',
+    color: isDark ? '#bfdbfe' : '#1d4ed8',
     fontSize: 12,
   },
   footerRow: {
-    marginTop: ui.spacing.sm,
+    marginTop: theme.spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
   footerText: {
-    color: '#1d4ed8',
+    color: isDark ? '#bfdbfe' : '#1d4ed8',
     fontSize: 12,
   },
-});
+  });
+}

@@ -1,16 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, Theme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { Pressable } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { OnboardingModal } from './src/components/OnboardingModal';
 import { AllTasksScreen } from './src/screens/AllTasksScreen';
 import { CreateTaskScreen } from './src/screens/CreateTaskScreen';
 import { TodayScreen } from './src/screens/TodayScreen';
-import { ui } from './src/theme/ui';
+import { useAppTheme } from './src/theme/theme';
 
 type RootTabParamList = {
   Today: undefined;
@@ -22,6 +23,7 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 const ONBOARDING_SEEN_KEY = 'nownext-onboarding-seen';
 
 export default function App() {
+  const { theme, isDark, toggleTheme } = useAppTheme();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
@@ -40,26 +42,65 @@ export default function App() {
     setShowOnboarding(false);
   }
 
+  const navigationTheme: Theme = {
+    dark: isDark,
+    colors: {
+      primary: theme.colors.tabActive,
+      background: theme.colors.background,
+      card: theme.colors.surface,
+      text: theme.colors.textPrimary,
+      border: theme.colors.border,
+      notification: theme.colors.success,
+    },
+    fonts: {
+      regular: {
+        fontFamily: 'System',
+        fontWeight: '400',
+      },
+      medium: {
+        fontFamily: 'System',
+        fontWeight: '500',
+      },
+      bold: {
+        fontFamily: 'System',
+        fontWeight: '700',
+      },
+      heavy: {
+        fontFamily: 'System',
+        fontWeight: '800',
+      },
+    },
+  };
+
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <StatusBar style="dark" />
+      <NavigationContainer theme={navigationTheme}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <Tab.Navigator
           screenOptions={({ route }) => ({
             headerTitleAlign: 'center',
             headerStyle: {
-              backgroundColor: ui.colors.background,
+              backgroundColor: theme.colors.background,
             },
             headerShadowVisible: false,
             headerTitleStyle: {
-              color: ui.colors.textPrimary,
+              color: theme.colors.textPrimary,
               fontWeight: '700',
             },
-            tabBarActiveTintColor: ui.colors.tabActive,
-            tabBarInactiveTintColor: ui.colors.tabInactive,
+            headerRight: () => (
+              <Pressable onPress={toggleTheme} style={{ marginRight: 12 }}>
+                <Ionicons
+                  name={isDark ? 'sunny-outline' : 'moon-outline'}
+                  size={20}
+                  color={theme.colors.textPrimary}
+                />
+              </Pressable>
+            ),
+            tabBarActiveTintColor: theme.colors.tabActive,
+            tabBarInactiveTintColor: theme.colors.tabInactive,
             tabBarStyle: {
-              borderTopColor: ui.colors.border,
-              backgroundColor: ui.colors.surface,
+              borderTopColor: theme.colors.border,
+              backgroundColor: theme.colors.surface,
               height: 64,
               paddingTop: 6,
               paddingBottom: 8,

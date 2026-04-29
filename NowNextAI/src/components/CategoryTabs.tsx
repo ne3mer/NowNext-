@@ -1,6 +1,7 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppTheme, useAppTheme } from '../theme/theme';
 import { TASK_CATEGORIES, TaskCategory } from '../types/task';
-import { ui } from '../theme/ui';
 
 type CategoryTabsProps = {
   selectedCategory: TaskCategory | 'all';
@@ -10,6 +11,9 @@ type CategoryTabsProps = {
 const tabCategories: Array<TaskCategory | 'all'> = ['all', ...TASK_CATEGORIES];
 
 export function CategoryTabs({ selectedCategory, onChangeCategory }: CategoryTabsProps) {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <View style={styles.container}>
       {tabCategories.map((category) => {
@@ -31,30 +35,32 @@ export function CategoryTabs({ selectedCategory, onChangeCategory }: CategoryTab
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   container: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: ui.spacing.xs,
+    gap: theme.spacing.xs,
   },
   tab: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: ui.colors.surface,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: ui.colors.border,
+    borderColor: theme.colors.border,
   },
   tabActive: {
-    backgroundColor: ui.colors.tabActive,
-    borderColor: ui.colors.tabActive,
+    backgroundColor: theme.colors.tabActive,
+    borderColor: theme.colors.tabActive,
   },
   text: {
-    color: ui.colors.tabInactive,
+    color: theme.colors.tabInactive,
     textTransform: 'capitalize',
     fontWeight: '500',
   },
   textActive: {
-    color: '#ffffff',
+    color: theme.colors.background,
   },
-});
+  });
+}

@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppTheme, useAppTheme } from '../theme/theme';
 import { Task } from '../types/task';
-import { ui } from '../theme/ui';
 
 type TaskCardProps = {
   task: Task;
@@ -9,8 +10,10 @@ type TaskCardProps = {
 };
 
 export function TaskCard({ task, onToggleComplete }: TaskCardProps) {
-  const categoryColor = ui.colors.category[task.category];
-  const priorityColor = ui.colors.priority[task.priority];
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const categoryColor = theme.colors.category[task.category];
+  const priorityColor = theme.colors.priority[task.priority];
 
   return (
     <Pressable
@@ -21,7 +24,7 @@ export function TaskCard({ task, onToggleComplete }: TaskCardProps) {
     >
       <View style={styles.headerRow}>
         <View style={styles.categoryRow}>
-          <Ionicons name="bookmark-outline" size={13} color={ui.colors.textSecondary} />
+          <Ionicons name="bookmark-outline" size={13} color={theme.colors.textSecondary} />
           <Text style={styles.category}>{task.category.toUpperCase()}</Text>
         </View>
         <View style={styles.priorityRow}>
@@ -35,72 +38,78 @@ export function TaskCard({ task, onToggleComplete }: TaskCardProps) {
         {task.deadline ? `Due ${new Date(task.deadline).toLocaleDateString()}` : 'No deadline'}
       </Text>
       <View style={styles.tapHintRow}>
-        <Ionicons name={task.completed ? 'refresh-circle-outline' : 'checkmark-circle-outline'} size={14} color={ui.colors.textSecondary} />
+        <Ionicons
+          name={task.completed ? 'refresh-circle-outline' : 'checkmark-circle-outline'}
+          size={14}
+          color={theme.colors.textSecondary}
+        />
         <Text style={styles.tapHint}>{task.completed ? 'Tap to mark as pending' : 'Tap to complete'}</Text>
       </View>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: ui.radius.lg,
-    padding: ui.spacing.md,
-    ...ui.shadow.card,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  categoryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  priorityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  title: {
-    color: ui.colors.textPrimary,
-    fontWeight: '700',
-    fontSize: 16,
-    marginTop: ui.spacing.xs,
-  },
-  titleCompleted: {
-    textDecorationLine: 'line-through',
-    opacity: 0.65,
-  },
-  category: {
-    color: ui.colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  priority: {
-    textTransform: 'capitalize',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  note: {
-    marginTop: ui.spacing.xs,
-    color: ui.colors.textSecondary,
-  },
-  deadline: {
-    marginTop: ui.spacing.sm,
-    color: ui.colors.textSecondary,
-    fontSize: 12,
-  },
-  tapHint: {
-    fontSize: 11,
-    color: ui.colors.textSecondary,
-    opacity: 0.9,
-  },
-  tapHintRow: {
-    marginTop: ui.spacing.xs,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-});
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
+    card: {
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing.md,
+      ...theme.shadow.card,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    categoryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    priorityRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    title: {
+      color: theme.colors.textPrimary,
+      fontWeight: '700',
+      fontSize: 16,
+      marginTop: theme.spacing.xs,
+    },
+    titleCompleted: {
+      textDecorationLine: 'line-through',
+      opacity: 0.65,
+    },
+    category: {
+      color: theme.colors.textSecondary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    priority: {
+      textTransform: 'capitalize',
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    note: {
+      marginTop: theme.spacing.xs,
+      color: theme.colors.textSecondary,
+    },
+    deadline: {
+      marginTop: theme.spacing.sm,
+      color: theme.colors.textSecondary,
+      fontSize: 12,
+    },
+    tapHint: {
+      fontSize: 11,
+      color: theme.colors.textSecondary,
+      opacity: 0.9,
+    },
+    tapHintRow: {
+      marginTop: theme.spacing.xs,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+  });
+}

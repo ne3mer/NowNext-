@@ -2,16 +2,20 @@ import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryTabs } from '../components/CategoryTabs';
+import { CompletionCelebration } from '../components/CompletionCelebration';
 import { TaskCard } from '../components/TaskCard';
 import { useTaskStore } from '../store/taskStore';
+import { AppTheme, useAppTheme } from '../theme/theme';
 import { TaskCategory } from '../types/task';
-import { ui } from '../theme/ui';
 
 export function AllTasksScreen() {
   const insets = useSafeAreaInsets();
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const tasks = useTaskStore((state) => state.tasks);
   const hasHydrated = useTaskStore((state) => state.hasHydrated);
   const toggleTaskCompletion = useTaskStore((state) => state.toggleTaskCompletion);
+  const [celebrationTrigger, setCelebrationTrigger] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<TaskCategory | 'all'>('all');
 
   const visibleTasks = useMemo(() => {
@@ -22,11 +26,20 @@ export function AllTasksScreen() {
     return tasks.filter((task) => task.category === selectedCategory);
   }, [selectedCategory, tasks]);
 
+  function handleToggle(taskId: string) {
+    const target = tasks.find((task) => task.id === taskId);
+    toggleTaskCompletion(taskId);
+    if (target && !target.completed) {
+      setCelebrationTrigger((prev) => prev + 1);
+    }
+  }
+
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + ui.spacing.lg }]}
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + theme.spacing.lg }]}
     >
+      <CompletionCelebration trigger={celebrationTrigger} theme={theme} />
       <Text style={styles.title}>All Tasks</Text>
       <Text style={styles.subtitle}>Browse by category and tap any card to complete it.</Text>
 
@@ -39,7 +52,7 @@ export function AllTasksScreen() {
       ) : (
         <View style={styles.list}>
           {visibleTasks.map((task) => (
-            <TaskCard key={task.id} task={task} onToggleComplete={toggleTaskCompletion} />
+            <TaskCard key={task.id} task={task} onToggleComplete={handleToggle} />
           ))}
         </View>
       )}
@@ -47,28 +60,30 @@ export function AllTasksScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: ui.colors.background,
+    backgroundColor: theme.colors.background,
   },
   content: {
-    padding: ui.spacing.lg,
-    gap: ui.spacing.md,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: ui.colors.textPrimary,
+    color: theme.colors.textPrimary,
   },
   subtitle: {
     fontSize: 16,
-    color: ui.colors.textSecondary,
+    color: theme.colors.textSecondary,
   },
   list: {
-    gap: ui.spacing.sm,
+    gap: theme.spacing.sm,
   },
   stateText: {
-    color: ui.colors.textSecondary,
+    color: theme.colors.textSecondary,
   },
-});
+  });
+}

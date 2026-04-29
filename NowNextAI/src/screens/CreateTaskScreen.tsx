@@ -13,11 +13,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTaskStore } from '../store/taskStore';
-import { ui } from '../theme/ui';
+import { AppTheme, useAppTheme } from '../theme/theme';
 import { TASK_CATEGORIES, TASK_PRIORITIES, TaskCategory, TaskPriority } from '../types/task';
 
 export function CreateTaskScreen() {
   const insets = useSafeAreaInsets();
+  const { theme, isDark } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
   const createTask = useTaskStore((state) => state.createTask);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
@@ -84,7 +86,7 @@ export function CreateTaskScreen() {
     >
       <ScrollView
         style={styles.container}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + ui.spacing.lg }]}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + theme.spacing.lg }]}
         keyboardShouldPersistTaps="handled"
         onScrollBeginDrag={Keyboard.dismiss}
       >
@@ -182,48 +184,49 @@ export function CreateTaskScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme, isDark: boolean) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: ui.colors.background,
+    backgroundColor: theme.colors.background,
   },
   content: {
-    padding: ui.spacing.lg,
-    paddingBottom: ui.spacing.lg * 2,
+    padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg * 2,
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: ui.colors.textPrimary,
+    color: theme.colors.textPrimary,
   },
   subtitle: {
-    marginTop: ui.spacing.xs,
-    color: ui.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+    color: theme.colors.textSecondary,
   },
   card: {
-    marginTop: ui.spacing.md,
-    backgroundColor: ui.colors.surface,
-    borderRadius: ui.radius.lg,
-    padding: ui.spacing.md,
+    marginTop: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.md,
     borderWidth: 1,
-    borderColor: ui.colors.border,
-    ...ui.shadow.card,
+    borderColor: theme.colors.border,
+    ...theme.shadow.card,
   },
   label: {
-    marginTop: ui.spacing.sm,
-    marginBottom: ui.spacing.xs,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
     fontSize: 13,
     fontWeight: '600',
-    color: ui.colors.textSecondary,
+    color: theme.colors.textSecondary,
   },
   input: {
     borderWidth: 1,
-    borderColor: ui.colors.border,
-    borderRadius: ui.radius.md,
-    backgroundColor: '#ffffff',
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: isDark ? '#111827' : '#ffffff',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: ui.colors.textPrimary,
+    color: theme.colors.textPrimary,
   },
   noteInput: {
     minHeight: 90,
@@ -232,46 +235,46 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: ui.spacing.xs,
+    gap: theme.spacing.xs,
   },
   dateRow: {
     flexDirection: 'row',
-    gap: ui.spacing.xs,
+    gap: theme.spacing.xs,
   },
   dateButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: ui.colors.border,
-    borderRadius: ui.radius.md,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
     paddingVertical: 10,
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: isDark ? '#111827' : '#ffffff',
   },
   dateButtonDisabled: {
     opacity: 0.45,
   },
   dateButtonText: {
-    color: ui.colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontWeight: '600',
   },
   dateLabel: {
-    marginTop: ui.spacing.xs,
-    color: ui.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+    color: theme.colors.textSecondary,
   },
   pill: {
     borderWidth: 1,
-    borderColor: ui.colors.border,
+    borderColor: theme.colors.border,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#ffffff',
+    backgroundColor: isDark ? '#111827' : '#ffffff',
   },
   pillActive: {
-    backgroundColor: ui.colors.tabActive,
-    borderColor: ui.colors.tabActive,
+    backgroundColor: theme.colors.tabActive,
+    borderColor: theme.colors.tabActive,
   },
   pillText: {
-    color: ui.colors.tabInactive,
+    color: theme.colors.tabInactive,
     textTransform: 'capitalize',
     fontWeight: '600',
   },
@@ -279,19 +282,19 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   errorText: {
-    marginTop: ui.spacing.sm,
+    marginTop: theme.spacing.sm,
     color: '#b91c1c',
     fontWeight: '600',
   },
   successText: {
-    marginTop: ui.spacing.sm,
-    color: '#15803d',
+    marginTop: theme.spacing.sm,
+    color: theme.colors.success,
     fontWeight: '600',
   },
   submitButton: {
-    marginTop: ui.spacing.md,
-    backgroundColor: ui.colors.tabActive,
-    borderRadius: ui.radius.md,
+    marginTop: theme.spacing.md,
+    backgroundColor: theme.colors.tabActive,
+    borderRadius: theme.radius.md,
     alignItems: 'center',
     paddingVertical: 12,
   },
@@ -300,4 +303,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-});
+  });
+}

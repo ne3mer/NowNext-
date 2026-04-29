@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { ui } from '../theme/ui';
+import { AppTheme, useAppTheme } from '../theme/theme';
 
 type OnboardingModalProps = {
   visible: boolean;
@@ -26,6 +27,9 @@ const highlights = [
 ];
 
 export function OnboardingModal({ visible, onClose }: OnboardingModalProps) {
+  const { theme, isDark } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
@@ -37,7 +41,7 @@ export function OnboardingModal({ visible, onClose }: OnboardingModalProps) {
           <View style={styles.list}>
             {highlights.map((item) => (
               <View key={item.title} style={styles.item}>
-                <Ionicons name={item.icon} size={18} color={ui.colors.tabActive} />
+                <Ionicons name={item.icon} size={18} color={theme.colors.tabActive} />
                 <View style={styles.itemCopy}>
                   <Text style={styles.itemTitle}>{item.title}</Text>
                   <Text style={styles.itemDesc}>{item.description}</Text>
@@ -55,24 +59,25 @@ export function OnboardingModal({ visible, onClose }: OnboardingModalProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme, isDark: boolean) {
+  return StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+    backgroundColor: isDark ? 'rgba(2, 6, 23, 0.72)' : 'rgba(15, 23, 42, 0.35)',
     justifyContent: 'center',
-    padding: ui.spacing.lg,
+    padding: theme.spacing.lg,
   },
   card: {
-    borderRadius: ui.radius.lg,
-    backgroundColor: ui.colors.surface,
-    padding: ui.spacing.lg,
-    gap: ui.spacing.sm,
-    ...ui.shadow.card,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.sm,
+    ...theme.shadow.card,
   },
   badge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#e2e8f0',
-    color: ui.colors.textPrimary,
+    backgroundColor: isDark ? '#1e293b' : '#e2e8f0',
+    color: theme.colors.textPrimary,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
@@ -82,19 +87,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: ui.colors.textPrimary,
+    color: theme.colors.textPrimary,
   },
   subtitle: {
-    color: ui.colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: 14,
   },
   list: {
-    marginTop: ui.spacing.xs,
-    gap: ui.spacing.sm,
+    marginTop: theme.spacing.xs,
+    gap: theme.spacing.sm,
   },
   item: {
     flexDirection: 'row',
-    gap: ui.spacing.sm,
+    gap: theme.spacing.sm,
     alignItems: 'flex-start',
   },
   itemCopy: {
@@ -103,16 +108,16 @@ const styles = StyleSheet.create({
   },
   itemTitle: {
     fontWeight: '700',
-    color: ui.colors.textPrimary,
+    color: theme.colors.textPrimary,
   },
   itemDesc: {
-    color: ui.colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: 12,
   },
   cta: {
-    marginTop: ui.spacing.sm,
-    borderRadius: ui.radius.md,
-    backgroundColor: ui.colors.tabActive,
+    marginTop: theme.spacing.sm,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.tabActive,
     alignItems: 'center',
     paddingVertical: 12,
   },
@@ -121,4 +126,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
-});
+  });
+}
