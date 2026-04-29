@@ -15,6 +15,8 @@ export function TaskCard({ task, onToggleComplete }: TaskCardProps) {
     <Pressable
       style={[styles.card, { backgroundColor: categoryColor }]}
       onPress={() => onToggleComplete?.(task.id)}
+      accessibilityRole="button"
+      accessibilityHint="Toggles task completion"
     >
       <View style={styles.headerRow}>
         <Text style={styles.category}>{task.category.toUpperCase()}</Text>
@@ -25,6 +27,7 @@ export function TaskCard({ task, onToggleComplete }: TaskCardProps) {
       <Text style={styles.deadline}>
         {task.deadline ? `Due ${new Date(task.deadline).toLocaleDateString()}` : 'No deadline'}
       </Text>
+      <Text style={styles.tapHint}>{task.completed ? 'Tap to mark as pending' : 'Tap to complete'}</Text>
     </Pressable>
   );
 }
@@ -68,5 +71,11 @@ const styles = StyleSheet.create({
     marginTop: ui.spacing.sm,
     color: ui.colors.textSecondary,
     fontSize: 12,
+  },
+  tapHint: {
+    marginTop: ui.spacing.xs,
+    fontSize: 11,
+    color: ui.colors.textSecondary,
+    opacity: 0.9,
   },
 });

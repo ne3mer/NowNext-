@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTaskStore } from '../store/taskStore';
 import { ui } from '../theme/ui';
 import { TASK_CATEGORIES, TASK_PRIORITIES, TaskCategory, TaskPriority } from '../types/task';
@@ -64,9 +64,14 @@ export function CreateTaskScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Create Task</Text>
-      <View style={styles.card}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Create Task</Text>
+        <Text style={styles.subtitle}>Capture it now and let NowNext guide your focus.</Text>
+        <View style={styles.card}>
         <Text style={styles.label}>Title</Text>
         <TextInput
           value={title}
@@ -148,8 +153,9 @@ export function CreateTaskScreen() {
         <Pressable style={styles.submitButton} onPress={onSubmit}>
           <Text style={styles.submitText}>Create Task</Text>
         </Pressable>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -166,6 +172,10 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: ui.colors.textPrimary,
+  },
+  subtitle: {
+    marginTop: ui.spacing.xs,
+    color: ui.colors.textSecondary,
   },
   card: {
     marginTop: ui.spacing.md,

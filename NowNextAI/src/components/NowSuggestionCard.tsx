@@ -7,6 +7,12 @@ type NowSuggestionCardProps = {
 };
 
 export function NowSuggestionCard({ task }: NowSuggestionCardProps) {
+  const reasonText = task
+    ? task.deadline
+      ? 'Recommended because this task has strong priority and a close deadline.'
+      : 'Recommended because this task has the highest current priority.'
+    : null;
+
   return (
     <Pressable style={styles.container}>
       <Text style={styles.title}>What should I do now?</Text>
@@ -14,10 +20,15 @@ export function NowSuggestionCard({ task }: NowSuggestionCardProps) {
         {task ? task.title : 'No pending tasks yet. Add one from the Create tab.'}
       </Text>
       {task && (
-        <Text style={styles.meta}>
-          {task.priority.toUpperCase()}
-          {task.deadline ? `  •  Due ${new Date(task.deadline).toLocaleDateString()}` : '  •  No deadline'}
-        </Text>
+        <View style={styles.metaRow}>
+          <Text style={styles.meta}>
+            {task.priority.toUpperCase()}
+            {task.deadline
+              ? `  •  Due ${new Date(task.deadline).toLocaleDateString()}`
+              : '  •  No deadline'}
+          </Text>
+          <Text style={styles.reason}>{reasonText}</Text>
+        </View>
       )}
     </Pressable>
   );
@@ -43,6 +54,13 @@ const styles = StyleSheet.create({
     marginTop: ui.spacing.xs,
     color: '#1e40af',
     fontWeight: '600',
+    fontSize: 12,
+  },
+  metaRow: {
+    gap: ui.spacing.xs,
+  },
+  reason: {
+    color: '#1d4ed8',
     fontSize: 12,
   },
 });
