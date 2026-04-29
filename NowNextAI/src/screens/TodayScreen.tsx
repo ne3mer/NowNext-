@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { NowSuggestionCard } from '../components/NowSuggestionCard';
 import { TaskCard } from '../components/TaskCard';
@@ -20,14 +21,17 @@ export function TodayScreen() {
 
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
+          <Ionicons name="layers-outline" size={16} color={ui.colors.textSecondary} />
           <Text style={styles.statValue}>{tasks.length}</Text>
           <Text style={styles.statLabel}>Total</Text>
         </View>
         <View style={styles.statCard}>
+          <Ionicons name="time-outline" size={16} color={ui.colors.textSecondary} />
           <Text style={styles.statValue}>{pendingTasks.length}</Text>
           <Text style={styles.statLabel}>Pending</Text>
         </View>
         <View style={styles.statCard}>
+          <Ionicons name="checkmark-done-outline" size={16} color={ui.colors.textSecondary} />
           <Text style={styles.statValue}>{completedTasks.length}</Text>
           <Text style={styles.statLabel}>Done</Text>
         </View>

@@ -1,5 +1,6 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -22,7 +23,7 @@ export default function App() {
       <NavigationContainer>
         <StatusBar style="dark" />
         <Tab.Navigator
-          screenOptions={{
+          screenOptions={({ route }) => ({
             headerTitleAlign: 'center',
             headerStyle: {
               backgroundColor: ui.colors.background,
@@ -45,7 +46,18 @@ export default function App() {
               fontSize: 12,
               fontWeight: '600',
             },
-          }}
+            tabBarIcon: ({ color, size, focused }) => {
+              const iconSize = focused ? size + 2 : size;
+
+              if (route.name === 'Today') {
+                return <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={iconSize} color={color} />;
+              }
+              if (route.name === 'Create') {
+                return <Ionicons name={focused ? 'add-circle' : 'add-circle-outline'} size={iconSize} color={color} />;
+              }
+              return <Ionicons name={focused ? 'albums' : 'albums-outline'} size={iconSize} color={color} />;
+            },
+          })}
         >
           <Tab.Screen name="Today" component={TodayScreen} />
           <Tab.Screen name="Create" component={CreateTaskScreen} />

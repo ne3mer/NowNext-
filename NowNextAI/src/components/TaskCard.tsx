@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Task } from '../types/task';
 import { ui } from '../theme/ui';
@@ -19,15 +20,24 @@ export function TaskCard({ task, onToggleComplete }: TaskCardProps) {
       accessibilityHint="Toggles task completion"
     >
       <View style={styles.headerRow}>
-        <Text style={styles.category}>{task.category.toUpperCase()}</Text>
-        <Text style={[styles.priority, { color: priorityColor }]}>{task.priority}</Text>
+        <View style={styles.categoryRow}>
+          <Ionicons name="bookmark-outline" size={13} color={ui.colors.textSecondary} />
+          <Text style={styles.category}>{task.category.toUpperCase()}</Text>
+        </View>
+        <View style={styles.priorityRow}>
+          <Ionicons name="flag" size={12} color={priorityColor} />
+          <Text style={[styles.priority, { color: priorityColor }]}>{task.priority}</Text>
+        </View>
       </View>
       <Text style={[styles.title, task.completed && styles.titleCompleted]}>{task.title}</Text>
       {!!task.note && <Text style={styles.note}>{task.note}</Text>}
       <Text style={styles.deadline}>
         {task.deadline ? `Due ${new Date(task.deadline).toLocaleDateString()}` : 'No deadline'}
       </Text>
-      <Text style={styles.tapHint}>{task.completed ? 'Tap to mark as pending' : 'Tap to complete'}</Text>
+      <View style={styles.tapHintRow}>
+        <Ionicons name={task.completed ? 'refresh-circle-outline' : 'checkmark-circle-outline'} size={14} color={ui.colors.textSecondary} />
+        <Text style={styles.tapHint}>{task.completed ? 'Tap to mark as pending' : 'Tap to complete'}</Text>
+      </View>
     </Pressable>
   );
 }
@@ -42,6 +52,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  priorityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   title: {
     color: ui.colors.textPrimary,
@@ -73,9 +93,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   tapHint: {
-    marginTop: ui.spacing.xs,
     fontSize: 11,
     color: ui.colors.textSecondary,
     opacity: 0.9,
+  },
+  tapHintRow: {
+    marginTop: ui.spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
 });

@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Task } from '../types/task';
 import { ui } from '../theme/ui';
@@ -15,7 +16,10 @@ export function NowSuggestionCard({ task }: NowSuggestionCardProps) {
 
   return (
     <Pressable style={styles.container}>
-      <Text style={styles.title}>What should I do now?</Text>
+      <View style={styles.titleRow}>
+        <Ionicons name="flash" size={16} color="#1e3a8a" />
+        <Text style={styles.title}>What should I do now?</Text>
+      </View>
       <Text style={styles.subtitle}>
         {task ? task.title : 'No pending tasks yet. Add one from the Create tab.'}
       </Text>
@@ -30,6 +34,12 @@ export function NowSuggestionCard({ task }: NowSuggestionCardProps) {
           <Text style={styles.reason}>{reasonText}</Text>
         </View>
       )}
+      <View style={styles.footerRow}>
+        <Ionicons name="arrow-forward-circle-outline" size={14} color="#1d4ed8" />
+        <Text style={styles.footerText}>
+          {task ? 'Start with this one and build momentum.' : 'Create a task to unlock smart suggestions.'}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -46,6 +56,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1e3a8a',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   subtitle: {
     marginTop: ui.spacing.xs,
     color: '#1d4ed8',
@@ -60,6 +75,16 @@ const styles = StyleSheet.create({
     gap: ui.spacing.xs,
   },
   reason: {
+    color: '#1d4ed8',
+    fontSize: 12,
+  },
+  footerRow: {
+    marginTop: ui.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  footerText: {
     color: '#1d4ed8',
     fontSize: 12,
   },
