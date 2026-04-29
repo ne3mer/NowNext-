@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import {
   Keyboard,
@@ -32,6 +32,7 @@ export function CreateTaskScreen() {
   const [parentTaskId, setParentTaskId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
   const deadlineLabel = useMemo(() => {
     if (!deadline) {
@@ -99,16 +100,24 @@ export function CreateTaskScreen() {
     setSuccessMessage('Task created successfully.');
   }
 
+  function focusNoteField() {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 120);
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 22}
     >
       <ScrollView
+        ref={scrollRef}
         style={styles.container}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + theme.spacing.lg }]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         onScrollBeginDrag={Keyboard.dismiss}
       >
         <Text style={styles.title}>Create Task</Text>
@@ -228,6 +237,7 @@ export function CreateTaskScreen() {
           multiline
           returnKeyType="done"
           onSubmitEditing={Keyboard.dismiss}
+          onFocus={focusNoteField}
         />
 
         {!!error && <Text style={styles.errorText}>{error}</Text>}
