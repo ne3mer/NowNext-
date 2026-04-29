@@ -7,6 +7,7 @@ import { NowSuggestionCard } from '../components/NowSuggestionCard';
 import { TaskCard } from '../components/TaskCard';
 import { useTaskStore } from '../store/taskStore';
 import { AppTheme, useAppTheme } from '../theme/theme';
+import { chainToLabel, getTaskChain } from '../utils/taskLinks';
 import { getSuggestedTask } from '../utils/taskSuggestion';
 
 export function TodayScreen() {
@@ -20,6 +21,8 @@ export function TodayScreen() {
   const pendingTasks = tasks.filter((task) => !task.completed);
   const completedTasks = tasks.filter((task) => task.completed);
   const suggestedTask = getSuggestedTask(tasks);
+  const tasksById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
+  const suggestionChainLabel = suggestedTask ? chainToLabel(getTaskChain(suggestedTask, tasks)) : null;
 
   function handleToggle(taskId: string) {
     const target = tasks.find((task) => task.id === taskId);
@@ -56,7 +59,7 @@ export function TodayScreen() {
         </View>
       </View>
 
-      <NowSuggestionCard task={suggestedTask} />
+      <NowSuggestionCard task={suggestedTask} chainLabel={suggestionChainLabel} />
 
       {!hasHydrated ? (
         <Text style={styles.stateText}>Loading your tasks...</Text>
@@ -67,7 +70,12 @@ export function TodayScreen() {
           <Text style={styles.sectionTitle}>Pending now</Text>
           <View style={styles.list}>
             {pendingTasks.slice(0, 5).map((task) => (
-              <TaskCard key={task.id} task={task} onToggleComplete={handleToggle} />
+              <TaskCard
+                key={task.id}
+                task={task}
+                parentTitle={task.parentTaskId ? tasksById.get(task.parentTaskId)?.title ?? null : null}
+                onToggleComplete={handleToggle}
+              />
             ))}
           </View>
         </View>
@@ -78,7 +86,12 @@ export function TodayScreen() {
           <Text style={styles.sectionTitle}>Recently completed</Text>
           <View style={styles.list}>
             {completedTasks.slice(0, 3).map((task) => (
-              <TaskCard key={task.id} task={task} onToggleComplete={handleToggle} />
+              <TaskCard
+                key={task.id}
+                task={task}
+                parentTitle={task.parentTaskId ? tasksById.get(task.parentTaskId)?.title ?? null : null}
+                onToggleComplete={handleToggle}
+              />
             ))}
           </View>
         </View>

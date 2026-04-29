@@ -12,6 +12,7 @@ export interface Task {
   title: string;
   note?: string;
   category: TaskCategory;
+  parentTaskId: string | null;
   priority: TaskPriority;
   deadline: ISODateString | null;
   completed: boolean;
@@ -24,6 +25,7 @@ export interface CreateTaskInput {
   title: string;
   note?: string;
   category: TaskCategory;
+  parentTaskId?: string | null;
   priority: TaskPriority;
   deadline: ISODateString | null;
 }

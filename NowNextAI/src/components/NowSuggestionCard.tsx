@@ -6,9 +6,10 @@ import { Task } from '../types/task';
 
 type NowSuggestionCardProps = {
   task: Task | null;
+  chainLabel?: string | null;
 };
 
-export function NowSuggestionCard({ task }: NowSuggestionCardProps) {
+export function NowSuggestionCard({ task, chainLabel }: NowSuggestionCardProps) {
   const { theme, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
   const reasonText = task
@@ -35,6 +36,7 @@ export function NowSuggestionCard({ task }: NowSuggestionCardProps) {
               : '  •  No deadline'}
           </Text>
           <Text style={styles.reason}>{reasonText}</Text>
+          {!!chainLabel && <Text style={styles.chain}>Impact path: {chainLabel}</Text>}
         </View>
       )}
       <View style={styles.footerRow}>
@@ -81,6 +83,11 @@ function createStyles(theme: AppTheme, isDark: boolean) {
   reason: {
     color: isDark ? '#bfdbfe' : '#1d4ed8',
     fontSize: 12,
+  },
+  chain: {
+    color: isDark ? '#dbeafe' : '#1e40af',
+    fontSize: 12,
+    fontWeight: '600',
   },
   footerRow: {
     marginTop: theme.spacing.sm,

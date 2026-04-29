@@ -53,6 +53,7 @@ export const useTaskStore = create<TaskStore>()(
           title: input.title.trim(),
           note: input.note?.trim(),
           category: input.category,
+          parentTaskId: input.parentTaskId ?? null,
           priority: input.priority,
           deadline: input.deadline,
           completed: false,

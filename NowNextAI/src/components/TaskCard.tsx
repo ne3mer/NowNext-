@@ -6,10 +6,11 @@ import { Task } from '../types/task';
 
 type TaskCardProps = {
   task: Task;
+  parentTitle?: string | null;
   onToggleComplete?: (taskId: string) => void;
 };
 
-export function TaskCard({ task, onToggleComplete }: TaskCardProps) {
+export function TaskCard({ task, parentTitle, onToggleComplete }: TaskCardProps) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const categoryColor = theme.colors.category[task.category];
@@ -37,6 +38,7 @@ export function TaskCard({ task, onToggleComplete }: TaskCardProps) {
       <Text style={styles.deadline}>
         {task.deadline ? `Due ${new Date(task.deadline).toLocaleDateString()}` : 'No deadline'}
       </Text>
+      {!!parentTitle && <Text style={styles.linkedText}>Linked to goal: {parentTitle}</Text>}
       <View style={styles.tapHintRow}>
         <Ionicons
           name={task.completed ? 'refresh-circle-outline' : 'checkmark-circle-outline'}
@@ -99,6 +101,12 @@ function createStyles(theme: AppTheme) {
       marginTop: theme.spacing.sm,
       color: theme.colors.textSecondary,
       fontSize: 12,
+    },
+    linkedText: {
+      marginTop: 4,
+      color: theme.colors.textSecondary,
+      fontSize: 11,
+      fontWeight: '600',
     },
     tapHint: {
       fontSize: 11,

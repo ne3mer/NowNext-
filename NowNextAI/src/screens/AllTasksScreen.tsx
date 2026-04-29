@@ -17,6 +17,7 @@ export function AllTasksScreen() {
   const toggleTaskCompletion = useTaskStore((state) => state.toggleTaskCompletion);
   const [celebrationTrigger, setCelebrationTrigger] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<TaskCategory | 'all'>('all');
+  const tasksById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
 
   const visibleTasks = useMemo(() => {
     if (selectedCategory === 'all') {
@@ -52,7 +53,12 @@ export function AllTasksScreen() {
       ) : (
         <View style={styles.list}>
           {visibleTasks.map((task) => (
-            <TaskCard key={task.id} task={task} onToggleComplete={handleToggle} />
+            <TaskCard
+              key={task.id}
+              task={task}
+              parentTitle={task.parentTaskId ? tasksById.get(task.parentTaskId)?.title ?? null : null}
+              onToggleComplete={handleToggle}
+            />
           ))}
         </View>
       )}
