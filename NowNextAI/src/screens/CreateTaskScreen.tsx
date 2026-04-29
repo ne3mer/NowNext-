@@ -3,6 +3,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import {
   Keyboard,
   KeyboardAvoidingView,
+  LayoutChangeEvent,
   Platform,
   Pressable,
   ScrollView,
@@ -32,6 +33,8 @@ export function CreateTaskScreen() {
   const [parentTaskId, setParentTaskId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [noteSectionY, setNoteSectionY] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
 
   const deadlineLabel = useMemo(() => {
@@ -51,6 +54,23 @@ export function CreateTaskScreen() {
       setParentTaskId(null);
     }
   }, [parentCandidates, parentTaskId]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const onShow = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+    });
+    const onHide = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      onShow.remove();
+      onHide.remove();
+    };
+  }, []);
 
   const selectedParent = useMemo(
     () => parentCandidates.find((task) => task.id === parentTaskId) ?? null,
@@ -102,8 +122,13 @@ export function CreateTaskScreen() {
 
   function focusNoteField() {
     setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
+      const targetY = Math.max(noteSectionY - 24, 0);
+      scrollRef.current?.scrollTo({ y: targetY, animated: true });
     }, 120);
+  }
+
+  function onNoteSectionLayout(event: LayoutChangeEvent) {
+    setNoteSectionY(event.nativeEvent.layout.y);
   }
 
   return (
@@ -115,7 +140,10 @@ export function CreateTaskScreen() {
       <ScrollView
         ref={scrollRef}
         style={styles.container}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + theme.spacing.lg }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: insets.bottom + keyboardHeight + theme.spacing.lg },
+        ]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         onScrollBeginDrag={Keyboard.dismiss}
@@ -227,18 +255,23 @@ export function CreateTaskScreen() {
           />
         )}
 
-        <Text style={styles.label}>Note (optional)</Text>
-        <TextInput
-          value={note}
-          onChangeText={setNote}
-          placeholder="Add context for this task..."
-          placeholderTextColor="#94a3b8"
-          style={[styles.input, styles.noteInput]}
-          multiline
-          returnKeyType="done"
-          onSubmitEditing={Keyboard.dismiss}
-          onFocus={focusNoteField}
-        />
+        <View onLayout={onNoteSectionLayout} style={styles.noteWrap}>
+          <Text style={styles.label}>Note (optional)</Text>
+          <View style={styles.noteCard}>
+            <Text style={styles.noteHelper}>Brain dump freely. This section expands your focus clarity.</Text>
+            <TextInput
+              value={note}
+              onChangeText={setNote}
+              placeholder="Add context for this task..."
+              placeholderTextColor="#94a3b8"
+              style={[styles.input, styles.noteInput]}
+              multiline
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
+              onFocus={focusNoteField}
+            />
+          </View>
+        </View>
 
         {!!error && <Text style={styles.errorText}>{error}</Text>}
         {!!successMessage && <Text style={styles.successText}>{successMessage}</Text>}
@@ -304,6 +337,21 @@ function createStyles(theme: AppTheme, isDark: boolean) {
   noteInput: {
     minHeight: 90,
     textAlignVertical: 'top',
+  },
+  noteWrap: {
+    marginTop: theme.spacing.xs,
+  },
+  noteCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    padding: 10,
+    backgroundColor: theme.colors.background,
+    gap: 8,
+  },
+  noteHelper: {
+    fontSize: 11,
+    color: theme.colors.textSecondary,
   },
   row: {
     flexDirection: 'row',
