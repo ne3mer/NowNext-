@@ -8,7 +8,7 @@ import { NowSuggestionCard } from '../components/NowSuggestionCard';
 import { TaskCard } from '../components/TaskCard';
 import { useTaskStore } from '../store/taskStore';
 import { AppTheme, useAppTheme } from '../theme/theme';
-import { chainToLabel, getTaskChain, getTopGoalPulse } from '../utils/taskLinks';
+import { chainToLabel, chainToTitlePath, getTaskChain, getTopGoalPulse } from '../utils/taskLinks';
 import { getSuggestedTask } from '../utils/taskSuggestion';
 
 export function TodayScreen() {
@@ -115,6 +115,7 @@ export function TodayScreen() {
                 key={task.id}
                 task={task}
                 parentTitle={task.parentTaskId ? tasksById.get(task.parentTaskId)?.title ?? null : null}
+                impactPath={task.parentTaskId ? chainToTitlePath(getTaskChain(task, tasks)) : null}
                 onToggleComplete={handleToggle}
                 onDeleteTask={handleDelete}
               />
@@ -132,6 +133,7 @@ export function TodayScreen() {
                 key={task.id}
                 task={task}
                 parentTitle={task.parentTaskId ? tasksById.get(task.parentTaskId)?.title ?? null : null}
+                impactPath={task.parentTaskId ? chainToTitlePath(getTaskChain(task, tasks)) : null}
                 onToggleComplete={handleToggle}
                 onDeleteTask={handleDelete}
               />

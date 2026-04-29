@@ -7,6 +7,7 @@ import { TaskCard } from '../components/TaskCard';
 import { useTaskStore } from '../store/taskStore';
 import { AppTheme, useAppTheme } from '../theme/theme';
 import { TaskCategory } from '../types/task';
+import { chainToTitlePath, getTaskChain } from '../utils/taskLinks';
 
 export function AllTasksScreen() {
   const insets = useSafeAreaInsets();
@@ -65,6 +66,7 @@ export function AllTasksScreen() {
               key={task.id}
               task={task}
               parentTitle={task.parentTaskId ? tasksById.get(task.parentTaskId)?.title ?? null : null}
+              impactPath={task.parentTaskId ? chainToTitlePath(getTaskChain(task, tasks)) : null}
               onToggleComplete={handleToggle}
               onDeleteTask={handleDelete}
             />

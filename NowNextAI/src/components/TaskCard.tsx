@@ -7,15 +7,18 @@ import { Task } from '../types/task';
 type TaskCardProps = {
   task: Task;
   parentTitle?: string | null;
+  impactPath?: string | null;
   onToggleComplete?: (taskId: string) => void;
   onDeleteTask?: (taskId: string) => void;
 };
 
-export function TaskCard({ task, parentTitle, onToggleComplete, onDeleteTask }: TaskCardProps) {
+export function TaskCard({ task, parentTitle, impactPath, onToggleComplete, onDeleteTask }: TaskCardProps) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [showActions, setShowActions] = useState(false);
+  const [showImpactPath, setShowImpactPath] = useState(false);
   const linkPulse = useRef(new Animated.Value(0.55)).current;
+  const impactAnim = useRef(new Animated.Value(0)).current;
   const categoryColor = theme.colors.category[task.category];
   const priorityColor = theme.colors.priority[task.priority];
   const horizonSteps = ['daily', 'weekly', 'monthly', 'yearly'];
@@ -44,6 +47,18 @@ export function TaskCard({ task, parentTitle, onToggleComplete, onDeleteTask }: 
     animation.start();
     return () => animation.stop();
   }, [linkPulse, parentTitle]);
+
+  useEffect(() => {
+    if (!impactPath) {
+      return;
+    }
+
+    Animated.timing(impactAnim, {
+      toValue: showImpactPath ? 1 : 0,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [impactAnim, impactPath, showImpactPath]);
 
   return (
     <Pressable
@@ -76,6 +91,25 @@ export function TaskCard({ task, parentTitle, onToggleComplete, onDeleteTask }: 
               <Text style={styles.linkedBadge}>MISSION LINK ACTIVE</Text>
             </View>
             <Text style={styles.linkedText}>This task feeds into: {parentTitle}</Text>
+            {!!impactPath && (
+              <>
+                <Pressable style={styles.pathToggle} onPress={() => setShowImpactPath((prev) => !prev)}>
+                  <Ionicons
+                    name={showImpactPath ? 'chevron-up-outline' : 'chevron-down-outline'}
+                    size={13}
+                    color={theme.colors.textSecondary}
+                  />
+                  <Text style={styles.pathToggleText}>
+                    {showImpactPath ? 'Hide impact path' : 'Show impact path'}
+                  </Text>
+                </Pressable>
+                {showImpactPath && (
+                  <Animated.View style={{ opacity: impactAnim }}>
+                    <Text style={styles.pathText}>{impactPath}</Text>
+                  </Animated.View>
+                )}
+              </>
+            )}
           </View>
         </View>
       )}
@@ -226,6 +260,24 @@ function createStyles(theme: AppTheme) {
       fontSize: 10,
       fontWeight: '800',
       letterSpacing: 0.5,
+    },
+    pathToggle: {
+      marginTop: 2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    pathToggleText: {
+      color: theme.colors.textSecondary,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    pathText: {
+      marginTop: 4,
+      color: theme.colors.textPrimary,
+      fontSize: 12,
+      fontWeight: '500',
+      lineHeight: 17,
     },
     horizonRow: {
       marginTop: 6,

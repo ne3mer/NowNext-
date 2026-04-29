@@ -44,6 +44,13 @@ export function chainToLabel(chain: Task[]): string {
   return chain.map((item) => item.category).join(' -> ');
 }
 
+export function chainToTitlePath(chain: Task[]): string {
+  return [...chain]
+    .reverse()
+    .map((item) => item.title)
+    .join(' -> ');
+}
+
 type GoalPulse = {
   id: string;
   title: string;
