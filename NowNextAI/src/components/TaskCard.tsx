@@ -17,12 +17,17 @@ export function TaskCard({ task, parentTitle, impactPath, onToggleComplete, onDe
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [showActions, setShowActions] = useState(false);
   const [showImpactPath, setShowImpactPath] = useState(false);
+  const [activePathNode, setActivePathNode] = useState(0);
   const linkPulse = useRef(new Animated.Value(0.55)).current;
   const impactAnim = useRef(new Animated.Value(0)).current;
   const categoryColor = theme.colors.category[task.category];
   const priorityColor = theme.colors.priority[task.priority];
   const horizonSteps = ['daily', 'weekly', 'monthly', 'yearly'];
   const activeStepIndex = horizonSteps.indexOf(task.category);
+  const impactNodes = useMemo(
+    () => (impactPath ? impactPath.split(' -> ').filter((node) => node.trim().length > 0) : []),
+    [impactPath],
+  );
 
   useEffect(() => {
     if (!parentTitle) {
@@ -106,6 +111,29 @@ export function TaskCard({ task, parentTitle, impactPath, onToggleComplete, onDe
                 {showImpactPath && (
                   <Animated.View style={{ opacity: impactAnim }}>
                     <Text style={styles.pathText}>{impactPath}</Text>
+                    <View style={styles.timelineWrap}>
+                      {impactNodes.map((node, index) => {
+                        const isActive = index === activePathNode;
+                        const isLast = index === impactNodes.length - 1;
+
+                        return (
+                          <View key={`${task.id}-impact-${node}-${index}`} style={styles.timelineItem}>
+                            <Pressable
+                              style={[styles.timelineNode, isActive && styles.timelineNodeActive]}
+                              onPress={() => setActivePathNode(index)}
+                            >
+                              <Text style={[styles.timelineNodeText, isActive && styles.timelineNodeTextActive]}>
+                                {node}
+                              </Text>
+                            </Pressable>
+                            {!isLast && <View style={styles.timelineConnector} />}
+                          </View>
+                        );
+                      })}
+                    </View>
+                    <Text style={styles.timelineDetail}>
+                      Focus point: {impactNodes[activePathNode] ?? impactNodes[0]}
+                    </Text>
                   </Animated.View>
                 )}
               </>
@@ -278,6 +306,50 @@ function createStyles(theme: AppTheme) {
       fontSize: 12,
       fontWeight: '500',
       lineHeight: 17,
+    },
+    timelineWrap: {
+      marginTop: 8,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      rowGap: 8,
+    },
+    timelineItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginRight: 4,
+    },
+    timelineNode: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 999,
+      backgroundColor: theme.colors.surface,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+    },
+    timelineNodeActive: {
+      borderColor: theme.colors.textPrimary,
+      backgroundColor: theme.colors.textPrimary,
+    },
+    timelineNodeText: {
+      color: theme.colors.textSecondary,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    timelineNodeTextActive: {
+      color: '#ffffff',
+    },
+    timelineConnector: {
+      width: 12,
+      height: 1,
+      marginHorizontal: 5,
+      backgroundColor: theme.colors.border,
+    },
+    timelineDetail: {
+      marginTop: 8,
+      color: theme.colors.textSecondary,
+      fontSize: 11,
+      fontWeight: '600',
     },
     horizonRow: {
       marginTop: 6,
