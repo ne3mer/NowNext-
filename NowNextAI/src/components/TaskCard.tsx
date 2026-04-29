@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppTheme, useAppTheme } from '../theme/theme';
 import { Task } from '../types/task';
 
@@ -15,10 +15,35 @@ export function TaskCard({ task, parentTitle, onToggleComplete, onDeleteTask }: 
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [showActions, setShowActions] = useState(false);
+  const linkPulse = useRef(new Animated.Value(0.55)).current;
   const categoryColor = theme.colors.category[task.category];
   const priorityColor = theme.colors.priority[task.priority];
   const horizonSteps = ['daily', 'weekly', 'monthly', 'yearly'];
   const activeStepIndex = horizonSteps.indexOf(task.category);
+
+  useEffect(() => {
+    if (!parentTitle) {
+      return;
+    }
+
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(linkPulse, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(linkPulse, {
+          toValue: 0.55,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    animation.start();
+    return () => animation.stop();
+  }, [linkPulse, parentTitle]);
 
   return (
     <Pressable
@@ -42,7 +67,18 @@ export function TaskCard({ task, parentTitle, onToggleComplete, onDeleteTask }: 
       <Text style={styles.deadline}>
         {task.deadline ? `Due ${new Date(task.deadline).toLocaleDateString()}` : 'No deadline'}
       </Text>
-      {!!parentTitle && <Text style={styles.linkedText}>Linked to goal: {parentTitle}</Text>}
+      {!!parentTitle && (
+        <View style={styles.linkedWrap}>
+          <Animated.View style={[styles.linkPulseDot, { opacity: linkPulse }]} />
+          <View style={styles.linkedCard}>
+            <View style={styles.linkedTopRow}>
+              <Ionicons name="sparkles" size={13} color={theme.colors.textPrimary} />
+              <Text style={styles.linkedBadge}>MISSION LINK ACTIVE</Text>
+            </View>
+            <Text style={styles.linkedText}>This task feeds into: {parentTitle}</Text>
+          </View>
+        </View>
+      )}
       <View style={styles.horizonRow}>
         {horizonSteps.map((step, index) => (
           <View
@@ -154,10 +190,42 @@ function createStyles(theme: AppTheme) {
       fontSize: 12,
     },
     linkedText: {
-      marginTop: 4,
       color: theme.colors.textSecondary,
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '600',
+    },
+    linkedWrap: {
+      marginTop: 6,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    linkPulseDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 999,
+      backgroundColor: theme.colors.success,
+    },
+    linkedCard: {
+      flex: 1,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      backgroundColor: theme.colors.background,
+      gap: 4,
+    },
+    linkedTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    linkedBadge: {
+      color: theme.colors.textPrimary,
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 0.5,
     },
     horizonRow: {
       marginTop: 6,
