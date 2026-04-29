@@ -55,7 +55,7 @@ export function TodayScreen() {
           <Text style={styles.sectionTitle}>Recently completed</Text>
           <View style={styles.list}>
             {completedTasks.slice(0, 3).map((task) => (
-            <TaskCard key={task.id} task={task} onToggleComplete={toggleTaskCompletion} />
+              <TaskCard key={task.id} task={task} onToggleComplete={toggleTaskCompletion} />
             ))}
           </View>
         </View>
