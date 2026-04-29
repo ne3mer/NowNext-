@@ -15,6 +15,8 @@ export function TaskCard({ task, parentTitle, onToggleComplete }: TaskCardProps)
   const styles = useMemo(() => createStyles(theme), [theme]);
   const categoryColor = theme.colors.category[task.category];
   const priorityColor = theme.colors.priority[task.priority];
+  const horizonSteps = ['daily', 'weekly', 'monthly', 'yearly'];
+  const activeStepIndex = horizonSteps.indexOf(task.category);
 
   return (
     <Pressable
@@ -39,6 +41,18 @@ export function TaskCard({ task, parentTitle, onToggleComplete }: TaskCardProps)
         {task.deadline ? `Due ${new Date(task.deadline).toLocaleDateString()}` : 'No deadline'}
       </Text>
       {!!parentTitle && <Text style={styles.linkedText}>Linked to goal: {parentTitle}</Text>}
+      <View style={styles.horizonRow}>
+        {horizonSteps.map((step, index) => (
+          <View
+            key={`${task.id}-${step}`}
+            style={[
+              styles.horizonDot,
+              index <= activeStepIndex && styles.horizonDotActive,
+              index === activeStepIndex && styles.horizonDotCurrent,
+            ]}
+          />
+        ))}
+      </View>
       <View style={styles.tapHintRow}>
         <Ionicons
           name={task.completed ? 'refresh-circle-outline' : 'checkmark-circle-outline'}
@@ -107,6 +121,27 @@ function createStyles(theme: AppTheme) {
       color: theme.colors.textSecondary,
       fontSize: 11,
       fontWeight: '600',
+    },
+    horizonRow: {
+      marginTop: 6,
+      flexDirection: 'row',
+      gap: 5,
+    },
+    horizonDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 999,
+      backgroundColor: theme.colors.border,
+    },
+    horizonDotActive: {
+      backgroundColor: theme.colors.textSecondary,
+      opacity: 0.65,
+    },
+    horizonDotCurrent: {
+      width: 14,
+      borderRadius: 999,
+      opacity: 1,
+      backgroundColor: theme.colors.textPrimary,
     },
     tapHint: {
       fontSize: 11,

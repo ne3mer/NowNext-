@@ -23,6 +23,15 @@ export function TodayScreen() {
   const suggestedTask = getSuggestedTask(tasks);
   const tasksById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
   const suggestionChainLabel = suggestedTask ? chainToLabel(getTaskChain(suggestedTask, tasks)) : null;
+  const completionRate = tasks.length === 0 ? 0 : Math.round((completedTasks.length / tasks.length) * 100);
+  const linkedTasksCount = tasks.filter((task) => !!task.parentTaskId).length;
+  const linkRate = tasks.length === 0 ? 0 : Math.round((linkedTasksCount / tasks.length) * 100);
+  const motivationalLine =
+    completionRate >= 75
+      ? 'You are in flow mode today.'
+      : completionRate >= 40
+        ? 'Momentum is building. Keep shipping.'
+        : 'Start one small task to unlock momentum.';
 
   function handleToggle(taskId: string) {
     const target = tasks.find((task) => task.id === taskId);
@@ -56,6 +65,26 @@ export function TodayScreen() {
           <Ionicons name="checkmark-done-outline" size={16} color={theme.colors.textSecondary} />
           <Text style={styles.statValue}>{completedTasks.length}</Text>
           <Text style={styles.statLabel}>Done</Text>
+        </View>
+      </View>
+
+      <View style={styles.insightCard}>
+        <View style={styles.insightRow}>
+          <Text style={styles.insightTitle}>Creative Insights</Text>
+          <Text style={styles.insightValue}>{completionRate}% done</Text>
+        </View>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${completionRate}%` }]} />
+        </View>
+        <View style={styles.insightPills}>
+          <View style={styles.insightPill}>
+            <Ionicons name="git-network-outline" size={13} color={theme.colors.textSecondary} />
+            <Text style={styles.insightPillText}>{linkRate}% linked goals</Text>
+          </View>
+          <View style={styles.insightPill}>
+            <Ionicons name="flame-outline" size={13} color={theme.colors.textSecondary} />
+            <Text style={styles.insightPillText}>{motivationalLine}</Text>
+          </View>
         </View>
       </View>
 
@@ -138,6 +167,55 @@ function createStyles(theme: AppTheme) {
     color: theme.colors.textPrimary,
   },
   statLabel: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+  },
+  insightCard: {
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.sm,
+    gap: theme.spacing.xs,
+  },
+  insightRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  insightTitle: {
+    color: theme.colors.textPrimary,
+    fontWeight: '700',
+  },
+  insightValue: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  progressTrack: {
+    height: 7,
+    borderRadius: 999,
+    backgroundColor: theme.colors.border,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: theme.colors.success,
+  },
+  insightPills: {
+    gap: 6,
+  },
+  insightPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: theme.colors.background,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  insightPillText: {
     color: theme.colors.textSecondary,
     fontSize: 12,
   },

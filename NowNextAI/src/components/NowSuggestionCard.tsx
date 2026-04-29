@@ -12,6 +12,7 @@ type NowSuggestionCardProps = {
 export function NowSuggestionCard({ task, chainLabel }: NowSuggestionCardProps) {
   const { theme, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
+  const confidenceScore = task ? (task.priority === 'high' ? 92 : task.priority === 'medium' ? 74 : 58) : 0;
   const reasonText = task
     ? task.deadline
       ? 'Recommended because this task has strong priority and a close deadline.'
@@ -37,6 +38,13 @@ export function NowSuggestionCard({ task, chainLabel }: NowSuggestionCardProps) 
           </Text>
           <Text style={styles.reason}>{reasonText}</Text>
           {!!chainLabel && <Text style={styles.chain}>Impact path: {chainLabel}</Text>}
+          <View style={styles.confidenceRow}>
+            <Text style={styles.confidenceLabel}>Confidence</Text>
+            <Text style={styles.confidencePercent}>{confidenceScore}%</Text>
+          </View>
+          <View style={styles.confidenceTrack}>
+            <View style={[styles.confidenceFill, { width: `${confidenceScore}%` }]} />
+          </View>
         </View>
       )}
       <View style={styles.footerRow}>
@@ -88,6 +96,31 @@ function createStyles(theme: AppTheme, isDark: boolean) {
     color: isDark ? '#dbeafe' : '#1e40af',
     fontSize: 12,
     fontWeight: '600',
+  },
+  confidenceRow: {
+    marginTop: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  confidenceLabel: {
+    color: isDark ? '#bfdbfe' : '#1d4ed8',
+    fontSize: 11,
+  },
+  confidencePercent: {
+    color: isDark ? '#dbeafe' : '#1e40af',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  confidenceTrack: {
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: isDark ? '#1e40af' : '#93c5fd',
+    overflow: 'hidden',
+  },
+  confidenceFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: isDark ? '#dbeafe' : '#1d4ed8',
   },
   footerRow: {
     marginTop: theme.spacing.sm,
