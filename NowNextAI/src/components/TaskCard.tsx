@@ -1,21 +1,72 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Task } from '../types/task';
+import { ui } from '../theme/ui';
 
-export function TaskCard() {
+type TaskCardProps = {
+  task: Task;
+  onToggleComplete?: (taskId: string) => void;
+};
+
+export function TaskCard({ task, onToggleComplete }: TaskCardProps) {
+  const categoryColor = ui.colors.category[task.category];
+  const priorityColor = ui.colors.priority[task.priority];
+
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>Task card placeholder</Text>
-    </View>
+    <Pressable
+      style={[styles.card, { backgroundColor: categoryColor }]}
+      onPress={() => onToggleComplete?.(task.id)}
+    >
+      <View style={styles.headerRow}>
+        <Text style={styles.category}>{task.category.toUpperCase()}</Text>
+        <Text style={[styles.priority, { color: priorityColor }]}>{task.priority}</Text>
+      </View>
+      <Text style={[styles.title, task.completed && styles.titleCompleted]}>{task.title}</Text>
+      {!!task.note && <Text style={styles.note}>{task.note}</Text>}
+      <Text style={styles.deadline}>
+        {task.deadline ? `Due ${new Date(task.deadline).toLocaleDateString()}` : 'No deadline'}
+      </Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    backgroundColor: '#fde68a',
-    padding: 16,
+    borderRadius: ui.radius.lg,
+    padding: ui.spacing.md,
+    ...ui.shadow.card,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   title: {
-    color: '#1f2937',
+    color: ui.colors.textPrimary,
+    fontWeight: '700',
+    fontSize: 16,
+    marginTop: ui.spacing.xs,
+  },
+  titleCompleted: {
+    textDecorationLine: 'line-through',
+    opacity: 0.65,
+  },
+  category: {
+    color: ui.colors.textSecondary,
+    fontSize: 12,
     fontWeight: '600',
+  },
+  priority: {
+    textTransform: 'capitalize',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  note: {
+    marginTop: ui.spacing.xs,
+    color: ui.colors.textSecondary,
+  },
+  deadline: {
+    marginTop: ui.spacing.sm,
+    color: ui.colors.textSecondary,
+    fontSize: 12,
   },
 });

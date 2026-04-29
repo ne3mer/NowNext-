@@ -1,21 +1,60 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { TASK_CATEGORIES, TaskCategory } from '../types/task';
+import { ui } from '../theme/ui';
 
-export function CategoryTabs() {
+type CategoryTabsProps = {
+  selectedCategory: TaskCategory | 'all';
+  onChangeCategory: (category: TaskCategory | 'all') => void;
+};
+
+const tabCategories: Array<TaskCategory | 'all'> = ['all', ...TASK_CATEGORIES];
+
+export function CategoryTabs({ selectedCategory, onChangeCategory }: CategoryTabsProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Category tabs placeholder</Text>
+      {tabCategories.map((category) => {
+        const isActive = category === selectedCategory;
+
+        return (
+          <Pressable
+            key={category}
+            style={[styles.tab, isActive && styles.tabActive]}
+            onPress={() => onChangeCategory(category)}
+          >
+            <Text style={[styles.text, isActive && styles.textActive]}>
+              {category === 'all' ? 'All' : category}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: '#e2e8f0',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: ui.spacing.xs,
+  },
+  tab: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: ui.colors.surface,
+    borderWidth: 1,
+    borderColor: ui.colors.border,
+  },
+  tabActive: {
+    backgroundColor: ui.colors.tabActive,
+    borderColor: ui.colors.tabActive,
   },
   text: {
-    color: '#334155',
+    color: ui.colors.tabInactive,
+    textTransform: 'capitalize',
     fontWeight: '500',
+  },
+  textActive: {
+    color: '#ffffff',
   },
 });

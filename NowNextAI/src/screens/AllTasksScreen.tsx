@@ -1,28 +1,69 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { CategoryTabs } from '../components/CategoryTabs';
+import { TaskCard } from '../components/TaskCard';
+import { useTaskStore } from '../store/taskStore';
+import { TaskCategory } from '../types/task';
+import { ui } from '../theme/ui';
 
 export function AllTasksScreen() {
+  const tasks = useTaskStore((state) => state.tasks);
+  const hasHydrated = useTaskStore((state) => state.hasHydrated);
+  const toggleTaskCompletion = useTaskStore((state) => state.toggleTaskCompletion);
+  const [selectedCategory, setSelectedCategory] = useState<TaskCategory | 'all'>('all');
+
+  const visibleTasks = useMemo(() => {
+    if (selectedCategory === 'all') {
+      return tasks;
+    }
+
+    return tasks.filter((task) => task.category === selectedCategory);
+  }, [selectedCategory, tasks]);
+
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>All Tasks</Text>
-      <Text style={styles.subtitle}>Category-based list will be added soon.</Text>
-    </View>
+      <Text style={styles.subtitle}>Browse by category and tap any card to complete it.</Text>
+
+      <CategoryTabs selectedCategory={selectedCategory} onChangeCategory={setSelectedCategory} />
+
+      {!hasHydrated ? (
+        <Text style={styles.stateText}>Loading tasks...</Text>
+      ) : visibleTasks.length === 0 ? (
+        <Text style={styles.stateText}>No task found in this category.</Text>
+      ) : (
+        <View style={styles.list}>
+          {visibleTasks.map((task) => (
+            <TaskCard key={task.id} task={task} onToggleComplete={toggleTaskCompletion} />
+          ))}
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#f8fafc',
+    backgroundColor: ui.colors.background,
+  },
+  content: {
+    padding: ui.spacing.lg,
+    gap: ui.spacing.md,
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#0f172a',
+    color: ui.colors.textPrimary,
   },
   subtitle: {
-    marginTop: 8,
     fontSize: 16,
-    color: '#475569',
+    color: ui.colors.textSecondary,
+  },
+  list: {
+    gap: ui.spacing.sm,
+  },
+  stateText: {
+    color: ui.colors.textSecondary,
   },
 });
