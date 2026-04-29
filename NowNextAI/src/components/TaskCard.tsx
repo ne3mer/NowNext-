@@ -8,19 +8,31 @@ type TaskCardProps = {
   task: Task;
   parentTitle?: string | null;
   impactPath?: string | null;
+  linkCandidates?: Task[];
   onToggleComplete?: (taskId: string) => void;
   onDeleteTask?: (taskId: string) => void;
+  onLinkTask?: (taskId: string, parentTaskId: string | null) => void;
 };
 
-export function TaskCard({ task, parentTitle, impactPath, onToggleComplete, onDeleteTask }: TaskCardProps) {
+export function TaskCard({
+  task,
+  parentTitle,
+  impactPath,
+  linkCandidates = [],
+  onToggleComplete,
+  onDeleteTask,
+  onLinkTask,
+}: TaskCardProps) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [showActions, setShowActions] = useState(false);
+  const [showLinkOptions, setShowLinkOptions] = useState(false);
   const [showImpactPath, setShowImpactPath] = useState(false);
   const [activePathNode, setActivePathNode] = useState(0);
   const linkPulse = useRef(new Animated.Value(0.55)).current;
   const impactAnim = useRef(new Animated.Value(0)).current;
-  const categoryColor = theme.colors.category[task.category];
+  const categoryPalette = theme.colors.category as Record<string, string>;
+  const categoryColor = categoryPalette[task.category] ?? theme.colors.surface;
   const priorityColor = theme.colors.priority[task.priority];
   const horizonSteps = ['daily', 'weekly', 'monthly', 'yearly'];
   const activeStepIndex = horizonSteps.indexOf(task.category);
@@ -85,7 +97,9 @@ export function TaskCard({ task, parentTitle, impactPath, onToggleComplete, onDe
       <Text style={[styles.title, task.completed && styles.titleCompleted]}>{task.title}</Text>
       {!!task.note && <Text style={styles.note}>{task.note}</Text>}
       <Text style={styles.deadline}>
-        {task.deadline ? `Due ${new Date(task.deadline).toLocaleDateString()}` : 'No deadline'}
+        {task.deadline
+          ? `Due ${new Date(task.deadline).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`
+          : 'No deadline'}
       </Text>
       {!!parentTitle && (
         <View style={styles.linkedWrap}>
@@ -190,8 +204,54 @@ export function TaskCard({ task, parentTitle, impactPath, onToggleComplete, onDe
               <Ionicons name="trash-outline" size={16} color="#b91c1c" />
               <Text style={[styles.actionText, styles.actionDanger]}>Delete task</Text>
             </Pressable>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => {
+                setShowActions(false);
+                setShowLinkOptions(true);
+              }}
+            >
+              <Ionicons name="git-branch-outline" size={16} color={theme.colors.textPrimary} />
+              <Text style={styles.actionText}>Link to another goal</Text>
+            </Pressable>
             <Pressable style={styles.cancelButton} onPress={() => setShowActions(false)}>
               <Text style={styles.cancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showLinkOptions} transparent animationType="fade" onRequestClose={() => setShowLinkOptions(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Link "{task.title}"</Text>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => {
+                setShowLinkOptions(false);
+                onLinkTask?.(task.id, null);
+              }}
+            >
+              <Ionicons name="close-circle-outline" size={16} color={theme.colors.textPrimary} />
+              <Text style={styles.actionText}>Remove parent link</Text>
+            </Pressable>
+            {linkCandidates.slice(0, 8).map((candidate) => (
+              <Pressable
+                key={`${task.id}-link-${candidate.id}`}
+                style={styles.actionButton}
+                onPress={() => {
+                  setShowLinkOptions(false);
+                  onLinkTask?.(task.id, candidate.id);
+                }}
+              >
+                <Ionicons name="arrow-up-circle-outline" size={16} color={theme.colors.textPrimary} />
+                <Text style={styles.actionText}>
+                  {candidate.category}: {candidate.title}
+                </Text>
+              </Pressable>
+            ))}
+            <Pressable style={styles.cancelButton} onPress={() => setShowLinkOptions(false)}>
+              <Text style={styles.cancelText}>Close</Text>
             </Pressable>
           </View>
         </View>

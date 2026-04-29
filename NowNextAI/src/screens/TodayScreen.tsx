@@ -6,10 +6,42 @@ import { CompletionCelebration } from '../components/CompletionCelebration';
 import { GoalPulseCard } from '../components/GoalPulseCard';
 import { NowSuggestionCard } from '../components/NowSuggestionCard';
 import { TaskCard } from '../components/TaskCard';
+import { useAuthStore } from '../store/authStore';
 import { useTaskStore } from '../store/taskStore';
 import { AppTheme, useAppTheme } from '../theme/theme';
-import { chainToLabel, chainToTitlePath, getTaskChain, getTopGoalPulse } from '../utils/taskLinks';
+import {
+  chainToLabel,
+  chainToTitlePath,
+  getParentCandidates,
+  getTaskChain,
+  getTopGoalPulse,
+} from '../utils/taskLinks';
 import { getSuggestedTask } from '../utils/taskSuggestion';
+import { cancelTaskNotification, scheduleDeadlineNotification } from '../utils/notifications';
+
+function dayKey(dateLike: string | Date): string {
+  const date = dateLike instanceof Date ? dateLike : new Date(dateLike);
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+function computeStreak(completedAtDates: string[]): number {
+  if (completedAtDates.length === 0) {
+    return 0;
+  }
+  const daySet = new Set(completedAtDates.map(dayKey));
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  if (!daySet.has(dayKey(cursor))) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  let streak = 0;
+  while (daySet.has(dayKey(cursor))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
 
 export function TodayScreen() {
   const insets = useSafeAreaInsets();
@@ -18,7 +50,9 @@ export function TodayScreen() {
   const tasks = useTaskStore((state) => state.tasks);
   const toggleTaskCompletion = useTaskStore((state) => state.toggleTaskCompletion);
   const deleteTask = useTaskStore((state) => state.deleteTask);
+  const setLocalTaskMeta = useTaskStore((state) => state.setLocalTaskMeta);
   const hasHydrated = useTaskStore((state) => state.hasHydrated);
+  const token = useAuthStore((state) => state.token);
   const [celebrationTrigger, setCelebrationTrigger] = useState(0);
   const pendingTasks = tasks.filter((task) => !task.completed);
   const completedTasks = tasks.filter((task) => task.completed);
@@ -29,6 +63,21 @@ export function TodayScreen() {
   const completionRate = tasks.length === 0 ? 0 : Math.round((completedTasks.length / tasks.length) * 100);
   const linkedTasksCount = tasks.filter((task) => !!task.parentTaskId).length;
   const linkRate = tasks.length === 0 ? 0 : Math.round((linkedTasksCount / tasks.length) * 100);
+  const streakDays = useMemo(
+    () => computeStreak(completedTasks.map((task) => task.completedAt).filter((item): item is string => Boolean(item))),
+    [completedTasks],
+  );
+  const urgency = useMemo(() => {
+    const now = Date.now();
+    const in24h = now + 24 * 60 * 60 * 1000;
+    const pendingWithDeadline = pendingTasks.filter((task) => !!task.deadline);
+    const overdue = pendingWithDeadline.filter((task) => new Date(task.deadline as string).getTime() < now).length;
+    const dueSoon = pendingWithDeadline.filter((task) => {
+      const deadlineTime = new Date(task.deadline as string).getTime();
+      return deadlineTime >= now && deadlineTime <= in24h;
+    }).length;
+    return { overdue, dueSoon };
+  }, [pendingTasks]);
   const motivationalLine =
     completionRate >= 75
       ? 'You are in flow mode today.'
@@ -36,9 +85,20 @@ export function TodayScreen() {
         ? 'Momentum is building. Keep shipping.'
         : 'Start one small task to unlock momentum.';
 
-  function handleToggle(taskId: string) {
+  async function handleToggle(taskId: string) {
     const target = tasks.find((task) => task.id === taskId);
-    toggleTaskCompletion(taskId);
+    await toggleTaskCompletion(taskId, token);
+    if (target?.notificationId) {
+      await cancelTaskNotification(target.notificationId);
+    }
+    if (target && target.completed && target.deadline) {
+      const notificationId = await scheduleDeadlineNotification(target.title, target.deadline);
+      if (notificationId) {
+        setLocalTaskMeta(taskId, { notificationId });
+      }
+    } else if (target) {
+      setLocalTaskMeta(taskId, { notificationId: null });
+    }
     if (target && !target.completed) {
       setCelebrationTrigger((prev) => prev + 1);
     }
@@ -47,8 +107,20 @@ export function TodayScreen() {
   function handleDelete(taskId: string) {
     Alert.alert('Delete task', 'Are you sure you want to delete this task?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteTask(taskId) },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          const target = tasks.find((task) => task.id === taskId);
+          void cancelTaskNotification(target?.notificationId);
+          void deleteTask(taskId, token);
+        },
+      },
     ]);
+  }
+
+  function handleLinkTask(taskId: string, parentTaskId: string | null) {
+    setLocalTaskMeta(taskId, { parentTaskId });
   }
 
   return (
@@ -98,6 +170,21 @@ export function TodayScreen() {
         </View>
       </View>
 
+      <View style={styles.premiumRow}>
+        <View style={styles.premiumCard}>
+          <Ionicons name="flame" size={15} color={theme.colors.textPrimary} />
+          <Text style={styles.premiumValue}>{streakDays} day streak</Text>
+          <Text style={styles.premiumHint}>Consistency builds compounding results.</Text>
+        </View>
+        <View style={styles.premiumCard}>
+          <Ionicons name="alarm-outline" size={15} color={theme.colors.textPrimary} />
+          <Text style={styles.premiumValue}>
+            {urgency.overdue} overdue • {urgency.dueSoon} due soon
+          </Text>
+          <Text style={styles.premiumHint}>Your urgency radar for the next 24h.</Text>
+        </View>
+      </View>
+
       <NowSuggestionCard task={suggestedTask} chainLabel={suggestionChainLabel} />
 
       {!!topGoalPulse && <GoalPulseCard goalTitle={topGoalPulse.title} score={topGoalPulse.score} />}
@@ -116,8 +203,12 @@ export function TodayScreen() {
                 task={task}
                 parentTitle={task.parentTaskId ? tasksById.get(task.parentTaskId)?.title ?? null : null}
                 impactPath={task.parentTaskId ? chainToTitlePath(getTaskChain(task, tasks)) : null}
-                onToggleComplete={handleToggle}
+                onToggleComplete={(id) => {
+                  void handleToggle(id);
+                }}
                 onDeleteTask={handleDelete}
+                linkCandidates={getParentCandidates(tasks, task.category, task.id)}
+                onLinkTask={handleLinkTask}
               />
             ))}
           </View>
@@ -134,8 +225,12 @@ export function TodayScreen() {
                 task={task}
                 parentTitle={task.parentTaskId ? tasksById.get(task.parentTaskId)?.title ?? null : null}
                 impactPath={task.parentTaskId ? chainToTitlePath(getTaskChain(task, tasks)) : null}
-                onToggleComplete={handleToggle}
+                onToggleComplete={(id) => {
+                  void handleToggle(id);
+                }}
                 onDeleteTask={handleDelete}
+                linkCandidates={getParentCandidates(tasks, task.category, task.id)}
+                onLinkTask={handleLinkTask}
               />
             ))}
           </View>
@@ -232,6 +327,26 @@ function createStyles(theme: AppTheme) {
     paddingVertical: 6,
   },
   insightPillText: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+  },
+  premiumRow: {
+    gap: theme.spacing.xs,
+  },
+  premiumCard: {
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.sm,
+    gap: 6,
+  },
+  premiumValue: {
+    color: theme.colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  premiumHint: {
     color: theme.colors.textSecondary,
     fontSize: 12,
   },

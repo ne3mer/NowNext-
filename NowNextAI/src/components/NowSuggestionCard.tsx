@@ -33,7 +33,7 @@ export function NowSuggestionCard({ task, chainLabel }: NowSuggestionCardProps) 
           <Text style={styles.meta}>
             {task.priority.toUpperCase()}
             {task.deadline
-              ? `  •  Due ${new Date(task.deadline).toLocaleDateString()}`
+              ? `  •  Due ${new Date(task.deadline).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`
               : '  •  No deadline'}
           </Text>
           <Text style={styles.reason}>{reasonText}</Text>

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 import {
+  Animated,
   Keyboard,
   KeyboardAvoidingView,
   LayoutChangeEvent,
@@ -13,35 +15,100 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuthStore } from '../store/authStore';
+import { useCategoryStore } from '../store/categoryStore';
 import { useTaskStore } from '../store/taskStore';
 import { AppTheme, useAppTheme } from '../theme/theme';
 import { TASK_CATEGORIES, TASK_PRIORITIES, Task, TaskCategory, TaskPriority } from '../types/task';
 import { getParentCandidates } from '../utils/taskLinks';
+import { scheduleDeadlineNotification } from '../utils/notifications';
+
+const QUICK_TEMPLATES: Array<{
+  id: string;
+  label: string;
+  title: string;
+  category: TaskCategory;
+  priority: TaskPriority;
+  note: string;
+  dueInHours: number;
+}> = [
+  {
+    id: 'deep-work',
+    label: 'Deep Work',
+    title: '90-minute deep work sprint',
+    category: 'daily',
+    priority: 'high',
+    note: 'Focus mode on. No distractions.',
+    dueInHours: 2,
+  },
+  {
+    id: 'weekly-review',
+    label: 'Weekly Review',
+    title: 'Review weekly priorities and blockers',
+    category: 'weekly',
+    priority: 'medium',
+    note: 'Check progress and adjust next actions.',
+    dueInHours: 24,
+  },
+  {
+    id: 'goal-step',
+    label: 'Goal Step',
+    title: 'Ship one meaningful step for monthly goal',
+    category: 'monthly',
+    priority: 'high',
+    note: 'Pick one high-impact action and finish it.',
+    dueInHours: 48,
+  },
+];
 
 export function CreateTaskScreen() {
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
   const createTask = useTaskStore((state) => state.createTask);
+  const setLocalTaskMeta = useTaskStore((state) => state.setLocalTaskMeta);
   const tasks = useTaskStore((state) => state.tasks);
+  const token = useAuthStore((state) => state.token);
+  const categories = useCategoryStore((state) => state.categories);
+  const createCategory = useCategoryStore((state) => state.createCategory);
+  const categoryError = useCategoryStore((state) => state.error);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [deadline, setDeadline] = useState<Date | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
   const [category, setCategory] = useState<TaskCategory>('daily');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [parentTaskId, setParentTaskId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const categoryOptions = useMemo(() => {
+    const fromBackend = categories.map((item) => item.name);
+    const all = [...fromBackend, ...TASK_CATEGORIES];
+    return Array.from(new Set(all));
+  }, [categories]);
+
+  useEffect(() => {
+    if (!categoryOptions.includes(category)) {
+      setCategory(categoryOptions[0] ?? 'daily');
+    }
+  }, [category, categoryOptions]);
+
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [noteSectionY, setNoteSectionY] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+  const entranceAnim = useRef(new Animated.Value(0)).current;
+  const heroScaleAnim = useRef(new Animated.Value(1)).current;
+  const ctaPulseAnim = useRef(new Animated.Value(1)).current;
 
   const deadlineLabel = useMemo(() => {
     if (!deadline) {
       return 'No deadline selected';
     }
-    return deadline.toLocaleDateString();
+    return deadline.toLocaleString([], {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
   }, [deadline]);
 
   const parentCandidates = useMemo(
@@ -54,6 +121,14 @@ export function CreateTaskScreen() {
       setParentTaskId(null);
     }
   }, [parentCandidates, parentTaskId]);
+
+  useEffect(() => {
+    Animated.timing(entranceAnim, {
+      toValue: 1,
+      duration: 420,
+      useNativeDriver: true,
+    }).start();
+  }, [entranceAnim]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -76,21 +151,94 @@ export function CreateTaskScreen() {
     () => parentCandidates.find((task) => task.id === parentTaskId) ?? null,
     [parentCandidates, parentTaskId],
   );
+  const formMomentum = useMemo(() => {
+    let score = 34;
+    if (title.trim().length > 0) {
+      score += 26;
+    }
+    if (deadline) {
+      score += 18;
+    }
+    if (note.trim().length > 0) {
+      score += 10;
+    }
+    if (parentTaskId) {
+      score += 12;
+    }
+    return Math.min(score, 100);
+  }, [title, deadline, note, parentTaskId]);
+
+  useEffect(() => {
+    if (title.trim().length === 0) {
+      return;
+    }
+    Animated.sequence([
+      Animated.timing(heroScaleAnim, {
+        toValue: 1.015,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+      Animated.timing(heroScaleAnim, {
+        toValue: 1,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [heroScaleAnim, title]);
+
+  useEffect(() => {
+    if (formMomentum < 72) {
+      ctaPulseAnim.setValue(1);
+      return;
+    }
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(ctaPulseAnim, {
+          toValue: 1.04,
+          duration: 550,
+          useNativeDriver: true,
+        }),
+        Animated.timing(ctaPulseAnim, {
+          toValue: 1,
+          duration: 550,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    loop.start();
+    return () => loop.stop();
+  }, [ctaPulseAnim, formMomentum]);
 
   function onChangeDeadline(event: DateTimePickerEvent, selectedDate?: Date) {
     if (event.type === 'dismissed') {
-      setShowDatePicker(false);
+      setPickerMode(null);
       return;
     }
 
     if (selectedDate) {
-      setDeadline(selectedDate);
+      if (pickerMode === 'time') {
+        const baseDate = deadline ?? new Date();
+        const mergedDateTime = new Date(baseDate);
+        mergedDateTime.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
+        setDeadline(mergedDateTime);
+      } else {
+        const nextDate = new Date(selectedDate);
+        const previous = deadline;
+        if (previous) {
+          nextDate.setHours(previous.getHours(), previous.getMinutes(), 0, 0);
+        } else {
+          nextDate.setHours(9, 0, 0, 0);
+        }
+        setDeadline(nextDate);
+      }
       setError(null);
     }
-    setShowDatePicker(false);
+    setPickerMode(null);
   }
 
-  function onSubmit() {
+  async function onSubmit() {
     Keyboard.dismiss();
     const normalizedTitle = title.trim();
     if (!normalizedTitle) {
@@ -101,14 +249,28 @@ export function CreateTaskScreen() {
 
     const deadlineIso = deadline ? new Date(deadline).toISOString() : null;
 
-    createTask({
+    const createdTask = await createTask(
+      {
       title: normalizedTitle,
       note: note.trim() || undefined,
       category,
       parentTaskId,
       priority,
       deadline: deadlineIso,
-    });
+      },
+      token,
+    );
+    if (!createdTask) {
+      setError('Please login first.');
+      return;
+    }
+
+    if (deadlineIso) {
+      const notificationId = await scheduleDeadlineNotification(normalizedTitle, deadlineIso);
+      if (notificationId) {
+        setLocalTaskMeta(createdTask.id, { notificationId });
+      }
+    }
 
     setTitle('');
     setNote('');
@@ -131,6 +293,30 @@ export function CreateTaskScreen() {
     setNoteSectionY(event.nativeEvent.layout.y);
   }
 
+  function applyTemplate(templateId: string) {
+    const template = QUICK_TEMPLATES.find((item) => item.id === templateId);
+    if (!template) {
+      return;
+    }
+    const dueDate = new Date(Date.now() + template.dueInHours * 60 * 60 * 1000);
+    setTitle(template.title);
+    setCategory(template.category);
+    setPriority(template.priority);
+    setNote(template.note);
+    setDeadline(dueDate);
+    setError(null);
+    setSuccessMessage(null);
+  }
+
+  async function handleCreateCategory() {
+    if (!newCategoryName.trim()) {
+      return;
+    }
+    await createCategory(token, newCategoryName);
+    setCategory(newCategoryName.trim().toLowerCase());
+    setNewCategoryName('');
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -149,8 +335,52 @@ export function CreateTaskScreen() {
         onScrollBeginDrag={Keyboard.dismiss}
       >
         <Text style={styles.title}>Create Task</Text>
-        <Text style={styles.subtitle}>Capture it now and let NowNext guide your focus.</Text>
-        <View style={styles.card}>
+        <Text style={styles.subtitle}>Build a clear task with a premium flow.</Text>
+        <Animated.View style={[styles.heroCard, { transform: [{ scale: heroScaleAnim }] }]}>
+          <View style={styles.heroTopRow}>
+            <Text style={styles.heroTitle}>Live draft preview</Text>
+            <View style={styles.heroMomentumBadge}>
+              <Ionicons name="flash-outline" size={12} color="#ffffff" />
+              <Text style={styles.heroMomentumText}>{formMomentum}% ready</Text>
+            </View>
+          </View>
+          <Text style={styles.heroDraftTitle}>{title.trim() || 'Untitled task'}</Text>
+          <Text style={styles.heroDraftMeta}>
+            {category.toUpperCase()} • {priority.toUpperCase()} • {deadline ? deadlineLabel : 'No schedule yet'}
+          </Text>
+          {!!selectedParent && <Text style={styles.heroDraftMeta}>Linked to: {selectedParent.title}</Text>}
+        </Animated.View>
+        <View style={styles.templateWrap}>
+          <Text style={styles.templateTitle}>Quick Start Templates</Text>
+          <View style={styles.templateRow}>
+            {QUICK_TEMPLATES.map((template) => (
+              <Pressable key={template.id} style={styles.templateChip} onPress={() => applyTemplate(template.id)}>
+                <Ionicons name="sparkles-outline" size={13} color={theme.colors.textSecondary} />
+                <Text style={styles.templateChipText}>{template.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+        <Animated.View
+          style={[
+            styles.card,
+            {
+              opacity: entranceAnim,
+              transform: [
+                {
+                  translateY: entranceAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [14, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+        <View style={styles.sectionHeader}>
+          <Ionicons name="create-outline" size={15} color={theme.colors.textSecondary} />
+          <Text style={styles.sectionTitle}>Core details</Text>
+        </View>
         <Text style={styles.label}>Title</Text>
         <TextInput
           value={title}
@@ -162,9 +392,13 @@ export function CreateTaskScreen() {
           onSubmitEditing={Keyboard.dismiss}
         />
 
+        <View style={styles.sectionHeader}>
+          <Ionicons name="layers-outline" size={15} color={theme.colors.textSecondary} />
+          <Text style={styles.sectionTitle}>Planning setup</Text>
+        </View>
         <Text style={styles.label}>Category</Text>
         <View style={styles.row}>
-          {TASK_CATEGORIES.map((item) => {
+          {categoryOptions.map((item) => {
             const isActive = item === category;
             return (
               <Pressable
@@ -177,6 +411,19 @@ export function CreateTaskScreen() {
             );
           })}
         </View>
+        <View style={styles.customCategoryRow}>
+          <TextInput
+            value={newCategoryName}
+            onChangeText={setNewCategoryName}
+            placeholder="Create new category"
+            placeholderTextColor="#94a3b8"
+            style={[styles.input, styles.customCategoryInput]}
+          />
+          <Pressable style={styles.addCategoryButton} onPress={() => void handleCreateCategory()}>
+            <Text style={styles.addCategoryText}>Add</Text>
+          </Pressable>
+        </View>
+        {!!categoryError && <Text style={styles.errorText}>{categoryError}</Text>}
 
         <Text style={styles.label}>Priority</Text>
         <View style={styles.row}>
@@ -226,15 +473,29 @@ export function CreateTaskScreen() {
           </View>
         )}
         {!!selectedParent && (
-          <Text style={styles.helperText}>
-            Impact chain active: this task contributes directly to "{selectedParent.title}".
-          </Text>
+          <View style={styles.linkStatusCard}>
+            <Ionicons name="git-branch-outline" size={13} color={theme.colors.textPrimary} />
+            <Text style={styles.linkStatusText}>
+              Impact chain active: this task contributes directly to "{selectedParent.title}".
+            </Text>
+          </View>
         )}
 
+        <View style={styles.sectionHeader}>
+          <Ionicons name="time-outline" size={15} color={theme.colors.textSecondary} />
+          <Text style={styles.sectionTitle}>Schedule</Text>
+        </View>
         <Text style={styles.label}>Deadline (optional)</Text>
         <View style={styles.dateRow}>
-          <Pressable style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+          <Pressable style={styles.dateButton} onPress={() => setPickerMode('date')}>
             <Text style={styles.dateButtonText}>{deadline ? 'Change Date' : 'Pick a Date'}</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.dateButton, !deadline && styles.dateButtonDisabled]}
+            onPress={() => setPickerMode('time')}
+            disabled={!deadline}
+          >
+            <Text style={styles.dateButtonText}>{deadline ? 'Pick Time' : 'Select date first'}</Text>
           </Pressable>
           <Pressable
             style={[styles.dateButton, !deadline && styles.dateButtonDisabled]}
@@ -245,17 +506,21 @@ export function CreateTaskScreen() {
           </Pressable>
         </View>
         <Text style={styles.dateLabel}>{deadlineLabel}</Text>
-        {showDatePicker && (
+        {pickerMode && (
           <DateTimePicker
             value={deadline ?? new Date()}
-            mode="date"
+            mode={pickerMode}
             display="default"
             onChange={onChangeDeadline}
-            minimumDate={new Date()}
+            minimumDate={pickerMode === 'date' ? new Date() : undefined}
           />
         )}
 
         <View onLayout={onNoteSectionLayout} style={styles.noteWrap}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="document-text-outline" size={15} color={theme.colors.textSecondary} />
+            <Text style={styles.sectionTitle}>Context note</Text>
+          </View>
           <Text style={styles.label}>Note (optional)</Text>
           <View style={styles.noteCard}>
             <Text style={styles.noteHelper}>Brain dump freely. This section expands your focus clarity.</Text>
@@ -276,10 +541,12 @@ export function CreateTaskScreen() {
         {!!error && <Text style={styles.errorText}>{error}</Text>}
         {!!successMessage && <Text style={styles.successText}>{successMessage}</Text>}
 
-        <Pressable style={styles.submitButton} onPress={onSubmit}>
-          <Text style={styles.submitText}>Create Task</Text>
-        </Pressable>
-        </View>
+        <Animated.View style={{ transform: [{ scale: ctaPulseAnim }] }}>
+          <Pressable style={styles.submitButton} onPress={onSubmit}>
+            <Text style={styles.submitText}>Create Task</Text>
+          </Pressable>
+        </Animated.View>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -304,6 +571,81 @@ function createStyles(theme: AppTheme, isDark: boolean) {
     marginTop: theme.spacing.xs,
     color: theme.colors.textSecondary,
   },
+  heroCard: {
+    marginTop: theme.spacing.md,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: isDark ? '#111827' : '#eef2ff',
+    padding: theme.spacing.md,
+    gap: 6,
+    ...theme.shadow.card,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  heroTitle: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  heroMomentumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#1d4ed8',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  heroMomentumText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  heroDraftTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  heroDraftMeta: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+  },
+  templateWrap: {
+    marginTop: theme.spacing.sm,
+    gap: 8,
+  },
+  templateTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  templateRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  templateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  templateChipText: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
   card: {
     marginTop: theme.spacing.md,
     backgroundColor: theme.colors.surface,
@@ -313,12 +655,41 @@ function createStyles(theme: AppTheme, isDark: boolean) {
     borderColor: theme.colors.border,
     ...theme.shadow.card,
   },
+  sectionHeader: {
+    marginTop: theme.spacing.md,
+    marginBottom: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  sectionTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
   label: {
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xs,
     fontSize: 13,
     fontWeight: '600',
     color: theme.colors.textSecondary,
+  },
+  linkStatusCard: {
+    marginTop: theme.spacing.xs,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    padding: 10,
+    backgroundColor: theme.colors.background,
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  linkStatusText: {
+    flex: 1,
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
   },
     helperText: {
       marginTop: theme.spacing.xs,
@@ -357,6 +728,25 @@ function createStyles(theme: AppTheme, isDark: boolean) {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.xs,
+  },
+  customCategoryRow: {
+    marginTop: theme.spacing.xs,
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    alignItems: 'center',
+  },
+  customCategoryInput: {
+    flex: 1,
+  },
+  addCategoryButton: {
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.tabActive,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  addCategoryText: {
+    color: '#ffffff',
+    fontWeight: '700',
   },
     linkGrid: {
       gap: theme.spacing.xs,

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { API_BASE_URL } from '../config/api';
 import { compareByDeadline } from '../utils/taskMeta';
 import { CreateTaskInput, Task, TaskCategory, TaskPriority, UpdateTaskInput } from '../types/task';
 
@@ -8,10 +9,13 @@ type TaskStore = {
   tasks: Task[];
   hasHydrated: boolean;
   setHasHydrated: (value: boolean) => void;
-  createTask: (input: CreateTaskInput) => Task;
-  updateTask: (taskId: string, updates: UpdateTaskInput) => void;
-  deleteTask: (taskId: string) => void;
-  toggleTaskCompletion: (taskId: string) => void;
+  reset: () => void;
+  setLocalTaskMeta: (taskId: string, updates: Pick<UpdateTaskInput, 'parentTaskId' | 'notificationId'>) => void;
+  syncFromBackend: (token: string) => Promise<void>;
+  createTask: (input: CreateTaskInput, token?: string | null) => Promise<Task | null>;
+  updateTask: (taskId: string, updates: UpdateTaskInput, token?: string | null) => Promise<void>;
+  deleteTask: (taskId: string, token?: string | null) => Promise<void>;
+  toggleTaskCompletion: (taskId: string, token?: string | null) => Promise<void>;
   clearCompletedTasks: () => void;
 };
 
@@ -20,10 +24,6 @@ const PRIORITY_SCORE: Record<TaskPriority, number> = {
   medium: 2,
   low: 1,
 };
-
-function createTaskId(): string {
-  return `task-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-}
 
 function sortTasks(tasks: Task[]): Task[] {
   return [...tasks].sort((a, b) => {
@@ -40,75 +40,155 @@ function sortTasks(tasks: Task[]): Task[] {
   });
 }
 
+type BackendTask = {
+  _id: string;
+  title: string;
+  description?: string;
+  category: TaskCategory;
+  priority: TaskPriority;
+  status: 'todo' | 'in_progress' | 'done';
+  dueDate: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function fromBackend(task: BackendTask): Task {
+  return {
+    id: task._id,
+    title: task.title,
+    note: task.description ?? undefined,
+    category: task.category,
+    parentTaskId: null,
+    notificationId: null,
+    priority: task.priority,
+    deadline: task.dueDate,
+    completed: task.status === 'done',
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+    completedAt: task.completedAt,
+  };
+}
+
+function toBackend(input: CreateTaskInput | UpdateTaskInput) {
+  return {
+    title: input.title,
+    description: input.note,
+    category: input.category,
+    priority: input.priority,
+    dueDate: input.deadline,
+  };
+}
+
+async function apiRequest<T>(path: string, token: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...(init?.headers ?? {}),
+    },
+  });
+  const payload = (await response.json()) as { success: boolean; data: T; error?: string };
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.error ?? 'Request failed');
+  }
+  return payload.data;
+}
+
 export const useTaskStore = create<TaskStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       tasks: [],
       hasHydrated: false,
       setHasHydrated: (value) => set({ hasHydrated: value }),
-      createTask: (input) => {
-        const nowIso = new Date().toISOString();
-        const task: Task = {
-          id: createTaskId(),
-          title: input.title.trim(),
-          note: input.note?.trim(),
-          category: input.category,
-          parentTaskId: input.parentTaskId ?? null,
-          priority: input.priority,
-          deadline: input.deadline,
-          completed: false,
-          createdAt: nowIso,
-          updatedAt: nowIso,
-          completedAt: null,
-        };
-
-        set((state) => ({
-          tasks: sortTasks([...state.tasks, task]),
-        }));
-
-        return task;
-      },
-      updateTask: (taskId, updates) => {
+      reset: () => set({ tasks: [], hasHydrated: false }),
+      setLocalTaskMeta: (taskId, updates) => {
         set((state) => ({
           tasks: sortTasks(
             state.tasks.map((task) =>
-              task.id === taskId
-                ? {
-                    ...task,
-                    ...updates,
-                    title: updates.title ? updates.title.trim() : task.title,
-                    note: updates.note?.trim() ?? task.note,
-                    updatedAt: new Date().toISOString(),
-                  }
-                : task,
+              task.id === taskId ? { ...task, ...updates, updatedAt: new Date().toISOString() } : task,
             ),
           ),
         }));
       },
-      deleteTask: (taskId) => {
+      syncFromBackend: async (token) => {
+        const remoteTasks = await apiRequest<BackendTask[]>('/tasks', token);
+        set({
+          tasks: sortTasks(remoteTasks.map(fromBackend)),
+          hasHydrated: true,
+        });
+      },
+      createTask: async (input, token) => {
+        if (!token) {
+          return null;
+        }
+        const remoteTask = await apiRequest<BackendTask>('/tasks', token, {
+          method: 'POST',
+          body: JSON.stringify({
+            ...toBackend(input),
+            status: 'todo',
+          }),
+        });
+        const task = fromBackend(remoteTask);
+        set((state) => ({
+          tasks: sortTasks([...state.tasks, task]),
+        }));
+        return task;
+      },
+      updateTask: async (taskId, updates, token) => {
+        if (!token) {
+          return;
+        }
+        const mapped = toBackend(updates);
+        const remoteTask = await apiRequest<BackendTask>(`/tasks/${taskId}`, token, {
+          method: 'PATCH',
+          body: JSON.stringify(mapped),
+        });
+        const task = fromBackend(remoteTask);
+        set((state) => ({
+          tasks: sortTasks(state.tasks.map((item) => (item.id === taskId ? { ...item, ...task } : item))),
+        }));
+      },
+      deleteTask: async (taskId, token) => {
+        if (!token) {
+          return;
+        }
+        await apiRequest<{ deleted: boolean }>(`/tasks/${taskId}`, token, {
+          method: 'DELETE',
+        });
         set((state) => ({
           tasks: state.tasks.filter((task) => task.id !== taskId),
         }));
       },
-      toggleTaskCompletion: (taskId) => {
-        set((state) => ({
-          tasks: sortTasks(
-            state.tasks.map((task) => {
-              if (task.id !== taskId) {
-                return task;
-              }
-
-              const nowIso = new Date().toISOString();
-              const nextCompleted = !task.completed;
-
-              return {
-                ...task,
-                completed: nextCompleted,
-                completedAt: nextCompleted ? nowIso : null,
-                updatedAt: nowIso,
-              };
+      toggleTaskCompletion: async (taskId, token) => {
+        if (!token) {
+          return;
+        }
+        const current = get().tasks.find((task) => task.id === taskId);
+        if (!current) {
+          return;
+        }
+        if (current.completed) {
+          const remoteTask = await apiRequest<BackendTask>(`/tasks/${taskId}`, token, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              status: 'todo',
+              completedAt: null,
             }),
-          ),
+          });
+          const task = fromBackend(remoteTask);
+          set((state) => ({
+            tasks: sortTasks(state.tasks.map((item) => (item.id === taskId ? { ...item, ...task } : item))),
+          }));
+          return;
+        }
+        const remoteTask = await apiRequest<BackendTask>(`/tasks/${taskId}/complete`, token, {
+          method: 'PATCH',
+        });
+        const task = fromBackend(remoteTask);
+        set((state) => ({
+          tasks: sortTasks(state.tasks.map((item) => (item.id === taskId ? { ...item, ...task } : item))),
         }));
       },
       clearCompletedTasks: () => {
@@ -134,7 +214,7 @@ export const useTaskStore = create<TaskStore>()(
       },
       onRehydrateStorage: () => (state) => {
         if (state) {
-          state.setHasHydrated(true);
+          state.setHasHydrated(false);
         }
       },
     },

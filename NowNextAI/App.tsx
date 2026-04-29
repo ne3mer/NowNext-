@@ -4,14 +4,19 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Pressable } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { OnboardingModal } from './src/components/OnboardingModal';
+import { AuthScreen } from './src/screens/AuthScreen';
 import { AllTasksScreen } from './src/screens/AllTasksScreen';
 import { CreateTaskScreen } from './src/screens/CreateTaskScreen';
 import { TodayScreen } from './src/screens/TodayScreen';
+import { useAuthStore } from './src/store/authStore';
+import { useCategoryStore } from './src/store/categoryStore';
+import { useTaskStore } from './src/store/taskStore';
 import { useAppTheme } from './src/theme/theme';
+import { ensureNotificationsBootstrapped } from './src/utils/notifications';
 
 type RootTabParamList = {
   Today: undefined;
@@ -24,6 +29,12 @@ const ONBOARDING_SEEN_KEY = 'nownext-onboarding-seen';
 
 export default function App() {
   const { theme, isDark, toggleTheme } = useAppTheme();
+  const token = useAuthStore((state) => state.token);
+  const authHydrated = useAuthStore((state) => state.hasHydrated);
+  const logout = useAuthStore((state) => state.logout);
+  const syncFromBackend = useTaskStore((state) => state.syncFromBackend);
+  const resetTasks = useTaskStore((state) => state.reset);
+  const fetchCategories = useCategoryStore((state) => state.fetchCategories);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
@@ -36,6 +47,19 @@ export default function App() {
 
     void checkOnboarding();
   }, []);
+
+  useEffect(() => {
+    void ensureNotificationsBootstrapped();
+  }, []);
+
+  useEffect(() => {
+    if (!token) {
+      resetTasks();
+      return;
+    }
+    void syncFromBackend(token);
+    void fetchCategories(token);
+  }, [fetchCategories, resetTasks, syncFromBackend, token]);
 
   async function closeOnboarding() {
     await AsyncStorage.setItem(ONBOARDING_SEEN_KEY, 'true');
@@ -76,6 +100,9 @@ export default function App() {
     <SafeAreaProvider>
       <NavigationContainer theme={navigationTheme}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
+        {!authHydrated ? null : !token ? (
+          <AuthScreen />
+        ) : (
         <Tab.Navigator
           screenOptions={({ route }) => ({
             headerTitleAlign: 'center',
@@ -88,13 +115,14 @@ export default function App() {
               fontWeight: '700',
             },
             headerRight: () => (
-              <Pressable onPress={toggleTheme} style={{ marginRight: 12 }}>
-                <Ionicons
-                  name={isDark ? 'sunny-outline' : 'moon-outline'}
-                  size={20}
-                  color={theme.colors.textPrimary}
-                />
-              </Pressable>
+              <View style={{ marginRight: 12, flexDirection: 'row', gap: 10 }}>
+                <Pressable onPress={logout}>
+                  <Ionicons name="log-out-outline" size={20} color={theme.colors.textPrimary} />
+                </Pressable>
+                <Pressable onPress={toggleTheme}>
+                  <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={20} color={theme.colors.textPrimary} />
+                </Pressable>
+              </View>
             ),
             tabBarActiveTintColor: theme.colors.tabActive,
             tabBarInactiveTintColor: theme.colors.tabInactive,
@@ -133,6 +161,7 @@ export default function App() {
             options={{ title: 'All Tasks' }}
           />
         </Tab.Navigator>
+        )}
         <OnboardingModal visible={showOnboarding} onClose={closeOnboarding} />
       </NavigationContainer>
     </SafeAreaProvider>

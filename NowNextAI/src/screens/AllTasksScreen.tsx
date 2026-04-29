@@ -4,10 +4,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryTabs } from '../components/CategoryTabs';
 import { CompletionCelebration } from '../components/CompletionCelebration';
 import { TaskCard } from '../components/TaskCard';
+import { useAuthStore } from '../store/authStore';
+import { useCategoryStore } from '../store/categoryStore';
 import { useTaskStore } from '../store/taskStore';
 import { AppTheme, useAppTheme } from '../theme/theme';
 import { TaskCategory } from '../types/task';
-import { chainToTitlePath, getTaskChain } from '../utils/taskLinks';
+import { chainToTitlePath, getParentCandidates, getTaskChain } from '../utils/taskLinks';
+import { cancelTaskNotification, scheduleDeadlineNotification } from '../utils/notifications';
 
 export function AllTasksScreen() {
   const insets = useSafeAreaInsets();
@@ -17,9 +20,17 @@ export function AllTasksScreen() {
   const hasHydrated = useTaskStore((state) => state.hasHydrated);
   const toggleTaskCompletion = useTaskStore((state) => state.toggleTaskCompletion);
   const deleteTask = useTaskStore((state) => state.deleteTask);
+  const setLocalTaskMeta = useTaskStore((state) => state.setLocalTaskMeta);
+  const token = useAuthStore((state) => state.token);
   const [celebrationTrigger, setCelebrationTrigger] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<TaskCategory | 'all'>('all');
+  const categories = useCategoryStore((state) => state.categories);
   const tasksById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
+  const categoryOptions = useMemo(() => {
+    const fromTasks = tasks.map((task) => task.category);
+    const fromStore = categories.map((item) => item.name);
+    return Array.from(new Set([...fromStore, ...fromTasks]));
+  }, [categories, tasks]);
 
   const visibleTasks = useMemo(() => {
     if (selectedCategory === 'all') {
@@ -29,9 +40,20 @@ export function AllTasksScreen() {
     return tasks.filter((task) => task.category === selectedCategory);
   }, [selectedCategory, tasks]);
 
-  function handleToggle(taskId: string) {
+  async function handleToggle(taskId: string) {
     const target = tasks.find((task) => task.id === taskId);
-    toggleTaskCompletion(taskId);
+    await toggleTaskCompletion(taskId, token);
+    if (target?.notificationId) {
+      await cancelTaskNotification(target.notificationId);
+    }
+    if (target && target.completed && target.deadline) {
+      const notificationId = await scheduleDeadlineNotification(target.title, target.deadline);
+      if (notificationId) {
+        setLocalTaskMeta(taskId, { notificationId });
+      }
+    } else if (target) {
+      setLocalTaskMeta(taskId, { notificationId: null });
+    }
     if (target && !target.completed) {
       setCelebrationTrigger((prev) => prev + 1);
     }
@@ -40,8 +62,20 @@ export function AllTasksScreen() {
   function handleDelete(taskId: string) {
     Alert.alert('Delete task', 'Are you sure you want to delete this task?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteTask(taskId) },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          const target = tasks.find((task) => task.id === taskId);
+          void cancelTaskNotification(target?.notificationId);
+          void deleteTask(taskId, token);
+        },
+      },
     ]);
+  }
+
+  function handleLinkTask(taskId: string, parentTaskId: string | null) {
+    setLocalTaskMeta(taskId, { parentTaskId });
   }
 
   return (
@@ -53,7 +87,11 @@ export function AllTasksScreen() {
       <Text style={styles.title}>All Tasks</Text>
       <Text style={styles.subtitle}>Browse by category and tap any card to complete it.</Text>
 
-      <CategoryTabs selectedCategory={selectedCategory} onChangeCategory={setSelectedCategory} />
+      <CategoryTabs
+        categories={categoryOptions}
+        selectedCategory={selectedCategory}
+        onChangeCategory={setSelectedCategory}
+      />
 
       {!hasHydrated ? (
         <Text style={styles.stateText}>Loading tasks...</Text>
@@ -67,8 +105,12 @@ export function AllTasksScreen() {
               task={task}
               parentTitle={task.parentTaskId ? tasksById.get(task.parentTaskId)?.title ?? null : null}
               impactPath={task.parentTaskId ? chainToTitlePath(getTaskChain(task, tasks)) : null}
-              onToggleComplete={handleToggle}
+              onToggleComplete={(id) => {
+                void handleToggle(id);
+              }}
               onDeleteTask={handleDelete}
+              linkCandidates={getParentCandidates(tasks, task.category, task.id)}
+              onLinkTask={handleLinkTask}
             />
           ))}
         </View>

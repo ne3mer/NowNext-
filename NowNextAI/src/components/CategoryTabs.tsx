@@ -1,18 +1,21 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppTheme, useAppTheme } from '../theme/theme';
-import { TASK_CATEGORIES, TaskCategory } from '../types/task';
+import { TaskCategory } from '../types/task';
 
 type CategoryTabsProps = {
+  categories: TaskCategory[];
   selectedCategory: TaskCategory | 'all';
   onChangeCategory: (category: TaskCategory | 'all') => void;
 };
 
-const tabCategories: Array<TaskCategory | 'all'> = ['all', ...TASK_CATEGORIES];
-
-export function CategoryTabs({ selectedCategory, onChangeCategory }: CategoryTabsProps) {
+export function CategoryTabs({ categories, selectedCategory, onChangeCategory }: CategoryTabsProps) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const tabCategories = useMemo<Array<TaskCategory | 'all'>>(
+    () => ['all', ...Array.from(new Set(categories))],
+    [categories],
+  );
 
   return (
     <View style={styles.container}>

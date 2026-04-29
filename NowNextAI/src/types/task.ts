@@ -1,5 +1,5 @@
 export const TASK_CATEGORIES = ['daily', 'weekly', 'monthly', 'yearly'] as const;
-export type TaskCategory = (typeof TASK_CATEGORIES)[number];
+export type TaskCategory = string;
 
 export const TASK_PRIORITIES = ['low', 'medium', 'high'] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
@@ -13,6 +13,7 @@ export interface Task {
   note?: string;
   category: TaskCategory;
   parentTaskId: string | null;
+  notificationId: string | null;
   priority: TaskPriority;
   deadline: ISODateString | null;
   completed: boolean;
@@ -32,4 +33,5 @@ export interface CreateTaskInput {
 
 export type UpdateTaskInput = Partial<Omit<CreateTaskInput, 'deadline'>> & {
   deadline?: ISODateString | null;
+  notificationId?: string | null;
 };

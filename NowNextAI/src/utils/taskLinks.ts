@@ -1,6 +1,6 @@
 import { Task, TaskCategory } from '../types/task';
 
-const PARENT_RULES: Record<TaskCategory, TaskCategory[]> = {
+const PARENT_RULES: Record<string, TaskCategory[]> = {
   daily: ['weekly', 'monthly', 'yearly'],
   weekly: ['monthly', 'yearly'],
   monthly: ['yearly'],
@@ -8,7 +8,7 @@ const PARENT_RULES: Record<TaskCategory, TaskCategory[]> = {
 };
 
 export function getParentOptions(category: TaskCategory): TaskCategory[] {
-  return PARENT_RULES[category];
+  return PARENT_RULES[category] ?? [];
 }
 
 export function getParentCandidates(tasks: Task[], category: TaskCategory, taskId?: string): Task[] {
