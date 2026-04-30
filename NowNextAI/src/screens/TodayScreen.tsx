@@ -1,15 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CompletionCelebration } from '../components/CompletionCelebration';
 import { GoalPulseCard } from '../components/GoalPulseCard';
 import { NowSuggestionCard } from '../components/NowSuggestionCard';
+import { PremiumPaywallModal } from '../components/PremiumPaywallModal';
 import { TaskCard } from '../components/TaskCard';
 import { useAuthStore } from '../store/authStore';
 import { usePremiumStore } from '../store/premiumStore';
 import { useTaskStore } from '../store/taskStore';
 import { AppTheme, useAppTheme } from '../theme/theme';
+import { UpdateTaskInput } from '../types/task';
 import {
   chainToLabel,
   chainToTitlePath,
@@ -17,8 +19,18 @@ import {
   getTaskChain,
   getTopGoalPulse,
 } from '../utils/taskLinks';
-import { getBestTaskSuggestion, getSimpleSuggestion, SuggestionResult } from '../utils/taskSuggestion';
-import { cancelTaskNotification, scheduleDeadlineNotification } from '../utils/notifications';
+import {
+  getBestTaskSuggestion,
+  getSimpleSuggestion,
+  MIN_PENDING_TASKS_FOR_SUGGESTION,
+  SuggestionResult,
+} from '../utils/taskSuggestion';
+import {
+  cancelScheduledNotification,
+  cancelTaskNotification,
+  scheduleDeadlineNotification,
+  scheduleFocusEndNotification,
+} from '../utils/notifications';
 
 function dayKey(dateLike: string | Date): string {
   const date = dateLike instanceof Date ? dateLike : new Date(dateLike);
@@ -51,22 +63,53 @@ export function TodayScreen() {
   const tasks = useTaskStore((state) => state.tasks);
   const toggleTaskCompletion = useTaskStore((state) => state.toggleTaskCompletion);
   const deleteTask = useTaskStore((state) => state.deleteTask);
+  const updateTask = useTaskStore((state) => state.updateTask);
   const setLocalTaskMeta = useTaskStore((state) => state.setLocalTaskMeta);
   const hasHydrated = useTaskStore((state) => state.hasHydrated);
   const token = useAuthStore((state) => state.token);
-  const isPremiumUser = usePremiumStore((state) => state.isPremiumUser);
+  const userId = useAuthStore((state) => state.user?._id ?? null);
+  const getIsPremiumForUser = usePremiumStore((state) => state.getIsPremiumForUser);
   const unlockPremium = usePremiumStore((state) => state.unlockPremium);
-  const canUseFreeSuggestion = usePremiumStore((state) => state.canUseFreeSuggestion);
+  const canUseFreeSuggestionForUser = usePremiumStore((state) => state.canUseFreeSuggestionForUser);
   const consumeFreeSuggestion = usePremiumStore((state) => state.consumeFreeSuggestion);
+  const getSuggestionHistory = usePremiumStore((state) => state.getSuggestionHistory);
+  const getFocusModeUntil = usePremiumStore((state) => state.getFocusModeUntil);
+  const getFocusNotificationId = usePremiumStore((state) => state.getFocusNotificationId);
+  const setFocusNotificationId = usePremiumStore((state) => state.setFocusNotificationId);
+  const setFocusMode = usePremiumStore((state) => state.setFocusMode);
+  const clearFocusMode = usePremiumStore((state) => state.clearFocusMode);
+  const addSuggestionHistory = usePremiumStore((state) => state.addSuggestionHistory);
   const [celebrationTrigger, setCelebrationTrigger] = useState(0);
   const [suggestionResult, setSuggestionResult] = useState<SuggestionResult | null>(null);
   const [simpleSuggestionTask, setSimpleSuggestionTask] = useState<ReturnType<typeof getSimpleSuggestion>>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [nowTick, setNowTick] = useState(Date.now());
+  const isPremiumUser = getIsPremiumForUser(userId);
+  const canUseFreeSuggestion = canUseFreeSuggestionForUser(userId);
+  const suggestionHistory = getSuggestionHistory(userId);
+  const focusModeUntil = getFocusModeUntil(userId);
+  const focusNotificationId = getFocusNotificationId(userId);
   const pendingTasks = tasks.filter((task) => !task.completed);
+  const hasEnoughTasksForSuggestion = pendingTasks.length >= MIN_PENDING_TASKS_FOR_SUGGESTION;
   const completedTasks = tasks.filter((task) => task.completed);
   const tasksById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
   const selectedSuggestionTask = suggestionResult?.task ?? simpleSuggestionTask;
   const suggestionChainLabel = selectedSuggestionTask ? chainToLabel(getTaskChain(selectedSuggestionTask, tasks)) : null;
-  const freeSuggestionLocked = !isPremiumUser && !canUseFreeSuggestion();
+  const freeSuggestionLocked = !isPremiumUser && !canUseFreeSuggestion;
+  const isFocusModeActive = !!focusModeUntil && new Date(focusModeUntil).getTime() > Date.now();
+  const focusRemainingMs = focusModeUntil ? Math.max(new Date(focusModeUntil).getTime() - nowTick, 0) : 0;
+  const premiumWeeklyInsight = useMemo(() => {
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const lastWeekTasks = tasks.filter((task) => new Date(task.createdAt).getTime() >= weekAgo);
+    const done = lastWeekTasks.filter((task) => task.completed).length;
+    const rate = lastWeekTasks.length === 0 ? 0 : Math.round((done / lastWeekTasks.length) * 100);
+    const byCategory = new Map<string, number>();
+    for (const task of lastWeekTasks) {
+      byCategory.set(task.category, (byCategory.get(task.category) ?? 0) + 1);
+    }
+    const topCategory = [...byCategory.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'n/a';
+    return { rate, topCategory, total: lastWeekTasks.length };
+  }, [tasks]);
   const topGoalPulse = useMemo(() => getTopGoalPulse(tasks), [tasks]);
   const completionRate = tasks.length === 0 ? 0 : Math.round((completedTasks.length / tasks.length) * 100);
   const linkedTasksCount = tasks.filter((task) => !!task.parentTaskId).length;
@@ -92,6 +135,36 @@ export function TodayScreen() {
       : completionRate >= 40
         ? 'Momentum is building. Keep shipping.'
         : 'Start one small task to unlock momentum.';
+
+  useEffect(() => {
+    // Reset session-scoped suggestion UI when account changes.
+    setSuggestionResult(null);
+    setSimpleSuggestionTask(null);
+    setShowPaywall(false);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!isFocusModeActive) {
+      return;
+    }
+    const timer = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [isFocusModeActive]);
+
+  useEffect(() => {
+    if (!isFocusModeActive && focusModeUntil) {
+      clearFocusMode(userId);
+    }
+  }, [clearFocusMode, focusModeUntil, isFocusModeActive, userId]);
+
+  const focusTimerLabel = useMemo(() => {
+    const totalSeconds = Math.floor(focusRemainingMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60)
+      .toString()
+      .padStart(2, '0');
+    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+    return `${minutes}:${seconds}`;
+  }, [focusRemainingMs]);
 
   async function handleToggle(taskId: string) {
     const target = tasks.find((task) => task.id === taskId);
@@ -131,38 +204,99 @@ export function TodayScreen() {
     setLocalTaskMeta(taskId, { parentTaskId });
   }
 
+  async function handleEditTask(taskId: string, updates: UpdateTaskInput) {
+    await updateTask(taskId, updates, token);
+  }
+
   function handleSuggestionRequest() {
+    if (!hasEnoughTasksForSuggestion) {
+      return;
+    }
+    const recentIds = suggestionHistory.slice(0, 2).map((item) => item.taskId);
     if (isPremiumUser) {
-      const best = getBestTaskSuggestion(tasks);
+      const best = getBestTaskSuggestion(tasks, {
+        excludeTaskIds: recentIds,
+        contextSeed: suggestionHistory.length + tasks.length,
+      });
       setSuggestionResult(best);
       setSimpleSuggestionTask(null);
+      if (best) {
+        addSuggestionHistory(userId, {
+          taskId: best.task.id,
+          taskTitle: best.task.title,
+          score: best.score,
+          explanation: best.explanation,
+        });
+      }
       return;
     }
 
-    if (canUseFreeSuggestion()) {
+    if (canUseFreeSuggestion) {
       const simpleTask = getSimpleSuggestion(tasks);
       setSimpleSuggestionTask(simpleTask);
       setSuggestionResult(null);
-      consumeFreeSuggestion();
+      consumeFreeSuggestion(userId);
+      if (simpleTask) {
+        addSuggestionHistory(userId, {
+          taskId: simpleTask.id,
+          taskTitle: simpleTask.title,
+          score: 0,
+          explanation: null,
+        });
+      }
       return;
     }
 
-    Alert.alert(
-      'Unlock Smart AI Suggestions',
-      'Unlock Smart AI Suggestions for €5 one-time to get explanations and unlimited daily insights.',
-      [
-        { text: 'Not now', style: 'cancel' },
-        {
-          text: 'Unlock €5',
-          onPress: () => {
-            unlockPremium();
-            const best = getBestTaskSuggestion(tasks);
-            setSuggestionResult(best);
-            setSimpleSuggestionTask(null);
-          },
-        },
-      ],
-    );
+    setShowPaywall(true);
+  }
+
+  function handleUnlockPremium() {
+    unlockPremium(userId);
+    setShowPaywall(false);
+    const best = getBestTaskSuggestion(tasks, {
+      excludeTaskIds: suggestionHistory.slice(0, 2).map((item) => item.taskId),
+      contextSeed: suggestionHistory.length + tasks.length,
+    });
+    setSuggestionResult(best);
+    setSimpleSuggestionTask(null);
+    if (best) {
+      addSuggestionHistory(userId, {
+        taskId: best.task.id,
+        taskTitle: best.task.title,
+        score: best.score,
+        explanation: best.explanation,
+      });
+    }
+  }
+
+  async function handleStartFocus(minutes: number) {
+    if (!isPremiumUser) {
+      setShowPaywall(true);
+      return;
+    }
+    if (focusNotificationId) {
+      try {
+        await cancelScheduledNotification(focusNotificationId);
+      } catch {
+        // Keep focus flow resilient even if old notification id is invalid.
+      }
+    }
+    setFocusMode(userId, minutes);
+    setNowTick(Date.now());
+    const notificationId = await scheduleFocusEndNotification(minutes);
+    setFocusNotificationId(userId, notificationId);
+  }
+
+  async function handleClearFocus() {
+    if (focusNotificationId) {
+      try {
+        await cancelScheduledNotification(focusNotificationId);
+      } catch {
+        // Ignore cancellation failures and still clear local focus state.
+      }
+    }
+    clearFocusMode(userId);
+    setNowTick(Date.now());
   }
 
   return (
@@ -171,6 +305,11 @@ export function TodayScreen() {
       contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + theme.spacing.lg }]}
     >
       <CompletionCelebration trigger={celebrationTrigger} theme={theme} />
+      <PremiumPaywallModal
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onUnlock={handleUnlockPremium}
+      />
       <Text style={styles.title}>Today</Text>
       <Text style={styles.subtitle}>Your focused tasks and next suggestion.</Text>
 
@@ -227,12 +366,57 @@ export function TodayScreen() {
         </View>
       </View>
 
+      {isPremiumUser && (
+        <View style={styles.premiumExperienceCard}>
+          <View style={styles.premiumExperienceHeader}>
+            <View style={styles.premiumBadge}>
+              <Ionicons name="diamond-outline" size={13} color={theme.colors.textPrimary} />
+              <Text style={styles.premiumBadgeText}>PREMIUM ACTIVE</Text>
+            </View>
+            <Text style={styles.premiumHint}>
+              Weekly done {premiumWeeklyInsight.rate}% • Top category {premiumWeeklyInsight.topCategory}
+            </Text>
+          </View>
+          <View style={styles.focusRow}>
+            <Pressable
+              style={[styles.focusButton, isFocusModeActive && styles.focusButtonActive]}
+              onPress={() => void handleStartFocus(45)}
+            >
+              <Text style={styles.focusButtonText}>
+                {isFocusModeActive ? `Focus Active ${focusTimerLabel}` : 'Start 45m Focus Mode'}
+              </Text>
+            </Pressable>
+            <Pressable style={styles.focusGhostButton} onPress={() => void handleStartFocus(25)}>
+              <Text style={styles.focusGhostText}>25m</Text>
+            </Pressable>
+            <Pressable style={styles.focusGhostButton} onPress={() => void handleClearFocus()}>
+              <Text style={styles.focusGhostText}>Clear</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.historyTitle}>Suggestion History</Text>
+          {suggestionHistory.length === 0 ? (
+            <Text style={styles.premiumHint}>No suggestions yet. Tap Smart Suggestion to build your history.</Text>
+          ) : (
+            suggestionHistory.slice(0, 3).map((item) => (
+              <View key={`${item.taskId}-${item.createdAt}`} style={styles.historyItem}>
+                <Text style={styles.historyItemTitle}>{item.taskTitle}</Text>
+                <Text style={styles.historyItemMeta}>
+                  {new Date(item.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                  {item.score > 0 ? ` • score ${item.score}` : ' • free suggestion'}
+                </Text>
+              </View>
+            ))
+          )}
+        </View>
+      )}
+
       <NowSuggestionCard
         task={selectedSuggestionTask}
         explanation={suggestionResult?.explanation ?? null}
         chainLabel={suggestionChainLabel}
         isPremiumUser={isPremiumUser}
         freeSuggestionLocked={freeSuggestionLocked}
+        minTasksRequired={hasEnoughTasksForSuggestion}
         onRequestSuggestion={handleSuggestionRequest}
       />
 
@@ -258,6 +442,7 @@ export function TodayScreen() {
                 onDeleteTask={handleDelete}
                 linkCandidates={getParentCandidates(tasks, task.category, task.id)}
                 onLinkTask={handleLinkTask}
+                onEditTask={handleEditTask}
               />
             ))}
           </View>
@@ -280,6 +465,7 @@ export function TodayScreen() {
                 onDeleteTask={handleDelete}
                 linkCandidates={getParentCandidates(tasks, task.category, task.id)}
                 onLinkTask={handleLinkTask}
+                onEditTask={handleEditTask}
               />
             ))}
           </View>
@@ -398,6 +584,90 @@ function createStyles(theme: AppTheme) {
   premiumHint: {
     color: theme.colors.textSecondary,
     fontSize: 12,
+  },
+  premiumExperienceCard: {
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.sm,
+    gap: theme.spacing.xs,
+  },
+  premiumExperienceHeader: {
+    gap: 6,
+  },
+  premiumBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: theme.colors.background,
+  },
+  premiumBadgeText: {
+    color: theme.colors.textPrimary,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  focusRow: {
+    marginTop: 2,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  focusButton: {
+    flex: 1,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.tabActive,
+    alignItems: 'center',
+    paddingVertical: 9,
+  },
+  focusButtonActive: {
+    backgroundColor: theme.colors.success,
+  },
+  focusButtonText: {
+    color: theme.colors.background,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  focusGhostButton: {
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+  focusGhostText: {
+    color: theme.colors.textSecondary,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  historyTitle: {
+    marginTop: 2,
+    color: theme.colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  historyItem: {
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+    padding: 8,
+    gap: 2,
+  },
+  historyItemTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  historyItemMeta: {
+    color: theme.colors.textSecondary,
+    fontSize: 11,
   },
   section: {
     gap: theme.spacing.sm,

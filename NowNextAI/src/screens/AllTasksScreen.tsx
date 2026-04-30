@@ -8,7 +8,7 @@ import { useAuthStore } from '../store/authStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { useTaskStore } from '../store/taskStore';
 import { AppTheme, useAppTheme } from '../theme/theme';
-import { TaskCategory } from '../types/task';
+import { TaskCategory, UpdateTaskInput } from '../types/task';
 import { chainToTitlePath, getParentCandidates, getTaskChain } from '../utils/taskLinks';
 import { cancelTaskNotification, scheduleDeadlineNotification } from '../utils/notifications';
 
@@ -20,6 +20,7 @@ export function AllTasksScreen() {
   const hasHydrated = useTaskStore((state) => state.hasHydrated);
   const toggleTaskCompletion = useTaskStore((state) => state.toggleTaskCompletion);
   const deleteTask = useTaskStore((state) => state.deleteTask);
+  const updateTask = useTaskStore((state) => state.updateTask);
   const setLocalTaskMeta = useTaskStore((state) => state.setLocalTaskMeta);
   const token = useAuthStore((state) => state.token);
   const [celebrationTrigger, setCelebrationTrigger] = useState(0);
@@ -78,6 +79,10 @@ export function AllTasksScreen() {
     setLocalTaskMeta(taskId, { parentTaskId });
   }
 
+  async function handleEditTask(taskId: string, updates: UpdateTaskInput) {
+    await updateTask(taskId, updates, token);
+  }
+
   return (
     <ScrollView
       style={styles.container}
@@ -111,6 +116,7 @@ export function AllTasksScreen() {
               onDeleteTask={handleDelete}
               linkCandidates={getParentCandidates(tasks, task.category, task.id)}
               onLinkTask={handleLinkTask}
+              onEditTask={handleEditTask}
             />
           ))}
         </View>

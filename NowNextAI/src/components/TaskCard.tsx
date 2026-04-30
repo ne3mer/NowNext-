@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AppTheme, useAppTheme } from '../theme/theme';
-import { Task } from '../types/task';
+import { Task, UpdateTaskInput } from '../types/task';
 
 type TaskCardProps = {
   task: Task;
@@ -12,6 +12,7 @@ type TaskCardProps = {
   onToggleComplete?: (taskId: string) => void;
   onDeleteTask?: (taskId: string) => void;
   onLinkTask?: (taskId: string, parentTaskId: string | null) => void;
+  onEditTask?: (taskId: string, updates: UpdateTaskInput) => Promise<void> | void;
 };
 
 export function TaskCard({
@@ -22,13 +23,19 @@ export function TaskCard({
   onToggleComplete,
   onDeleteTask,
   onLinkTask,
+  onEditTask,
 }: TaskCardProps) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [showActions, setShowActions] = useState(false);
   const [showLinkOptions, setShowLinkOptions] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showImpactPath, setShowImpactPath] = useState(false);
   const [activePathNode, setActivePathNode] = useState(0);
+  const [editTitle, setEditTitle] = useState(task.title);
+  const [editNote, setEditNote] = useState(task.note ?? '');
+  const [editDescription, setEditDescription] = useState(task.description ?? '');
+  const [editError, setEditError] = useState<string | null>(null);
   const linkPulse = useRef(new Animated.Value(0.55)).current;
   const impactAnim = useRef(new Animated.Value(0)).current;
   const categoryPalette = theme.colors.category as Record<string, string>;
@@ -40,6 +47,13 @@ export function TaskCard({
     () => (impactPath ? impactPath.split(' -> ').filter((node) => node.trim().length > 0) : []),
     [impactPath],
   );
+
+  useEffect(() => {
+    setEditTitle(task.title);
+    setEditNote(task.note ?? '');
+    setEditDescription(task.description ?? '');
+    setEditError(null);
+  }, [task.description, task.note, task.title]);
 
   useEffect(() => {
     if (!parentTitle) {
@@ -76,6 +90,21 @@ export function TaskCard({
       useNativeDriver: true,
     }).start();
   }, [impactAnim, impactPath, showImpactPath]);
+
+  async function handleSaveEdit() {
+    const normalizedTitle = editTitle.trim();
+    if (!normalizedTitle) {
+      setEditError('Title is required.');
+      return;
+    }
+    setEditError(null);
+    await onEditTask?.(task.id, {
+      title: normalizedTitle,
+      note: editNote.trim() || undefined,
+      description: editDescription.trim() || undefined,
+    });
+    setShowEditModal(false);
+  }
 
   return (
     <Pressable
@@ -215,6 +244,16 @@ export function TaskCard({
               <Ionicons name="git-branch-outline" size={16} color={theme.colors.textPrimary} />
               <Text style={styles.actionText}>Link to another goal</Text>
             </Pressable>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => {
+                setShowActions(false);
+                setShowEditModal(true);
+              }}
+            >
+              <Ionicons name="create-outline" size={16} color={theme.colors.textPrimary} />
+              <Text style={styles.actionText}>Edit task</Text>
+            </Pressable>
             <Pressable style={styles.cancelButton} onPress={() => setShowActions(false)}>
               <Text style={styles.cancelText}>Cancel</Text>
             </Pressable>
@@ -253,6 +292,45 @@ export function TaskCard({
             ))}
             <Pressable style={styles.cancelButton} onPress={() => setShowLinkOptions(false)}>
               <Text style={styles.cancelText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showEditModal} transparent animationType="fade" onRequestClose={() => setShowEditModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Edit task</Text>
+            <TextInput
+              value={editTitle}
+              onChangeText={setEditTitle}
+              placeholder="Task title"
+              placeholderTextColor="#94a3b8"
+              style={styles.editInput}
+            />
+            <TextInput
+              value={editNote}
+              onChangeText={setEditNote}
+              placeholder="Short note (optional)"
+              placeholderTextColor="#94a3b8"
+              style={[styles.editInput, styles.editArea]}
+              multiline
+            />
+            <TextInput
+              value={editDescription}
+              onChangeText={setEditDescription}
+              placeholder="Description (optional)"
+              placeholderTextColor="#94a3b8"
+              style={[styles.editInput, styles.editArea]}
+              multiline
+            />
+            {!!editError && <Text style={styles.actionDanger}>{editError}</Text>}
+            <Pressable style={styles.actionButton} onPress={() => void handleSaveEdit()}>
+              <Ionicons name="save-outline" size={16} color={theme.colors.textPrimary} />
+              <Text style={styles.actionText}>Save changes</Text>
+            </Pressable>
+            <Pressable style={styles.cancelButton} onPress={() => setShowEditModal(false)}>
+              <Text style={styles.cancelText}>Cancel</Text>
             </Pressable>
           </View>
         </View>
@@ -478,6 +556,19 @@ function createStyles(theme: AppTheme) {
     actionText: {
       color: theme.colors.textPrimary,
       fontWeight: '600',
+    },
+    editInput: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.background,
+      color: theme.colors.textPrimary,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    editArea: {
+      minHeight: 72,
+      textAlignVertical: 'top',
     },
     actionDanger: {
       color: '#b91c1c',
