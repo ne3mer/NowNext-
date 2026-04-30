@@ -85,9 +85,36 @@ export async function scheduleFocusEndNotification(minutes: number): Promise<str
   return id;
 }
 
+export async function scheduleFocusEndNotificationMs(remainingMs: number): Promise<string | null> {
+  if (remainingMs <= 0) {
+    return null;
+  }
+  const endsAt = Date.now() + remainingMs;
+  const id = await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Focus session completed',
+      body: 'Your paused focus session is completed. Time to review your next move.',
+      sound: true,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: new Date(endsAt),
+    },
+  });
+  return id;
+}
+
 export async function cancelScheduledNotification(notificationId: string | null | undefined) {
   if (!notificationId) {
     return;
   }
   await Notifications.cancelScheduledNotificationAsync(notificationId);
+}
+
+export async function cancelAllFocusNotifications() {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  const focusItems = scheduled.filter((item) => item.content.title === 'Focus session completed');
+  await Promise.all(
+    focusItems.map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)),
+  );
 }

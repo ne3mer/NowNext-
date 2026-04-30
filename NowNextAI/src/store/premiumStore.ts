@@ -16,6 +16,7 @@ type PremiumStore = {
   suggestionHistoryByUser: Record<string, SuggestionHistoryItem[]>;
   focusModeUntilByUser: Record<string, string | null>;
   focusNotificationIdByUser: Record<string, string | null>;
+  focusPausedRemainingMsByUser: Record<string, number | null>;
   getIsPremiumForUser: (userId: string | null | undefined) => boolean;
   unlockPremium: (userId: string | null | undefined) => void;
   canUseFreeSuggestionForUser: (userId: string | null | undefined) => boolean;
@@ -24,8 +25,11 @@ type PremiumStore = {
   addSuggestionHistory: (userId: string | null | undefined, item: Omit<SuggestionHistoryItem, 'createdAt'>) => void;
   getFocusModeUntil: (userId: string | null | undefined) => string | null;
   getFocusNotificationId: (userId: string | null | undefined) => string | null;
+  getFocusPausedRemainingMs: (userId: string | null | undefined) => number | null;
   setFocusNotificationId: (userId: string | null | undefined, notificationId: string | null) => void;
   setFocusMode: (userId: string | null | undefined, minutes: number) => void;
+  setFocusModeFromRemainingMs: (userId: string | null | undefined, remainingMs: number) => void;
+  setFocusPausedRemainingMs: (userId: string | null | undefined, remainingMs: number | null) => void;
   clearFocusMode: (userId: string | null | undefined) => void;
 };
 
@@ -41,6 +45,7 @@ export const usePremiumStore = create<PremiumStore>()(
       suggestionHistoryByUser: {},
       focusModeUntilByUser: {},
       focusNotificationIdByUser: {},
+      focusPausedRemainingMsByUser: {},
       getIsPremiumForUser: (userId) => {
         if (!userId) {
           return false;
@@ -111,6 +116,12 @@ export const usePremiumStore = create<PremiumStore>()(
         }
         return get().focusNotificationIdByUser[userId] ?? null;
       },
+      getFocusPausedRemainingMs: (userId) => {
+        if (!userId) {
+          return null;
+        }
+        return get().focusPausedRemainingMsByUser[userId] ?? null;
+      },
       setFocusNotificationId: (userId, notificationId) => {
         if (!userId) {
           return;
@@ -132,6 +143,41 @@ export const usePremiumStore = create<PremiumStore>()(
             ...state.focusModeUntilByUser,
             [userId]: endsAt,
           },
+          focusPausedRemainingMsByUser: {
+            ...state.focusPausedRemainingMsByUser,
+            [userId]: null,
+          },
+        }));
+      },
+      setFocusModeFromRemainingMs: (userId, remainingMs) => {
+        if (!userId || remainingMs <= 0) {
+          return;
+        }
+        const endsAt = new Date(Date.now() + remainingMs).toISOString();
+        set((state) => ({
+          focusModeUntilByUser: {
+            ...state.focusModeUntilByUser,
+            [userId]: endsAt,
+          },
+          focusPausedRemainingMsByUser: {
+            ...state.focusPausedRemainingMsByUser,
+            [userId]: null,
+          },
+        }));
+      },
+      setFocusPausedRemainingMs: (userId, remainingMs) => {
+        if (!userId) {
+          return;
+        }
+        set((state) => ({
+          focusPausedRemainingMsByUser: {
+            ...state.focusPausedRemainingMsByUser,
+            [userId]: remainingMs,
+          },
+          focusModeUntilByUser: {
+            ...state.focusModeUntilByUser,
+            [userId]: null,
+          },
         }));
       },
       clearFocusMode: (userId) => {
@@ -147,6 +193,10 @@ export const usePremiumStore = create<PremiumStore>()(
             ...state.focusNotificationIdByUser,
             [userId]: null,
           },
+          focusPausedRemainingMsByUser: {
+            ...state.focusPausedRemainingMsByUser,
+            [userId]: null,
+          },
         }));
       },
     }),
@@ -159,6 +209,7 @@ export const usePremiumStore = create<PremiumStore>()(
         suggestionHistoryByUser: state.suggestionHistoryByUser,
         focusModeUntilByUser: state.focusModeUntilByUser,
         focusNotificationIdByUser: state.focusNotificationIdByUser,
+        focusPausedRemainingMsByUser: state.focusPausedRemainingMsByUser,
       }),
       merge: (persistedState, currentState) => {
         const state = persistedState as Partial<PremiumStore> | undefined;
@@ -180,6 +231,10 @@ export const usePremiumStore = create<PremiumStore>()(
           state?.focusNotificationIdByUser && typeof state.focusNotificationIdByUser === 'object'
             ? state.focusNotificationIdByUser
             : {};
+        const focusPausedRemainingMsByUser =
+          state?.focusPausedRemainingMsByUser && typeof state.focusPausedRemainingMsByUser === 'object'
+            ? state.focusPausedRemainingMsByUser
+            : {};
 
         return {
           ...currentState,
@@ -188,6 +243,7 @@ export const usePremiumStore = create<PremiumStore>()(
           suggestionHistoryByUser,
           focusModeUntilByUser,
           focusNotificationIdByUser,
+          focusPausedRemainingMsByUser,
         };
       },
     },

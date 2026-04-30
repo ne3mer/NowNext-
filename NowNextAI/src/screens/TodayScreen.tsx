@@ -26,10 +26,12 @@ import {
   SuggestionResult,
 } from '../utils/taskSuggestion';
 import {
+  cancelAllFocusNotifications,
   cancelScheduledNotification,
   cancelTaskNotification,
   scheduleDeadlineNotification,
   scheduleFocusEndNotification,
+  scheduleFocusEndNotificationMs,
 } from '../utils/notifications';
 
 function dayKey(dateLike: string | Date): string {
@@ -75,8 +77,11 @@ export function TodayScreen() {
   const getSuggestionHistory = usePremiumStore((state) => state.getSuggestionHistory);
   const getFocusModeUntil = usePremiumStore((state) => state.getFocusModeUntil);
   const getFocusNotificationId = usePremiumStore((state) => state.getFocusNotificationId);
+  const getFocusPausedRemainingMs = usePremiumStore((state) => state.getFocusPausedRemainingMs);
   const setFocusNotificationId = usePremiumStore((state) => state.setFocusNotificationId);
   const setFocusMode = usePremiumStore((state) => state.setFocusMode);
+  const setFocusModeFromRemainingMs = usePremiumStore((state) => state.setFocusModeFromRemainingMs);
+  const setFocusPausedRemainingMs = usePremiumStore((state) => state.setFocusPausedRemainingMs);
   const clearFocusMode = usePremiumStore((state) => state.clearFocusMode);
   const addSuggestionHistory = usePremiumStore((state) => state.addSuggestionHistory);
   const [celebrationTrigger, setCelebrationTrigger] = useState(0);
@@ -89,6 +94,7 @@ export function TodayScreen() {
   const suggestionHistory = getSuggestionHistory(userId);
   const focusModeUntil = getFocusModeUntil(userId);
   const focusNotificationId = getFocusNotificationId(userId);
+  const pausedFocusRemainingMs = getFocusPausedRemainingMs(userId);
   const pendingTasks = tasks.filter((task) => !task.completed);
   const hasEnoughTasksForSuggestion = pendingTasks.length >= MIN_PENDING_TASKS_FOR_SUGGESTION;
   const completedTasks = tasks.filter((task) => task.completed);
@@ -98,6 +104,7 @@ export function TodayScreen() {
   const freeSuggestionLocked = !isPremiumUser && !canUseFreeSuggestion;
   const isFocusModeActive = !!focusModeUntil && new Date(focusModeUntil).getTime() > Date.now();
   const focusRemainingMs = focusModeUntil ? Math.max(new Date(focusModeUntil).getTime() - nowTick, 0) : 0;
+  const hasPausedFocus = !isFocusModeActive && (pausedFocusRemainingMs ?? 0) > 0;
   const premiumWeeklyInsight = useMemo(() => {
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const lastWeekTasks = tasks.filter((task) => new Date(task.createdAt).getTime() >= weekAgo);
@@ -282,12 +289,41 @@ export function TodayScreen() {
       }
     }
     setFocusMode(userId, minutes);
+    setFocusPausedRemainingMs(userId, null);
     setNowTick(Date.now());
     const notificationId = await scheduleFocusEndNotification(minutes);
     setFocusNotificationId(userId, notificationId);
   }
 
-  async function handleClearFocus() {
+  async function handlePauseFocus() {
+    if (!isFocusModeActive || !focusModeUntil) {
+      return;
+    }
+    const remainingMs = Math.max(new Date(focusModeUntil).getTime() - Date.now(), 0);
+    if (focusNotificationId) {
+      try {
+        await cancelScheduledNotification(focusNotificationId);
+      } catch {
+        // Best-effort cancellation, continue pausing timer state.
+      }
+    }
+    await cancelAllFocusNotifications();
+    setFocusNotificationId(userId, null);
+    setFocusPausedRemainingMs(userId, remainingMs > 0 ? remainingMs : null);
+    setNowTick(Date.now());
+  }
+
+  async function handleResumeFocus() {
+    if (!hasPausedFocus || !pausedFocusRemainingMs || pausedFocusRemainingMs <= 0) {
+      return;
+    }
+    setFocusModeFromRemainingMs(userId, pausedFocusRemainingMs);
+    const notificationId = await scheduleFocusEndNotificationMs(pausedFocusRemainingMs);
+    setFocusNotificationId(userId, notificationId);
+    setNowTick(Date.now());
+  }
+
+  async function handleStopFocus() {
     if (focusNotificationId) {
       try {
         await cancelScheduledNotification(focusNotificationId);
@@ -295,7 +331,10 @@ export function TodayScreen() {
         // Ignore cancellation failures and still clear local focus state.
       }
     }
+    await cancelAllFocusNotifications();
     clearFocusMode(userId);
+    setFocusNotificationId(userId, null);
+    setFocusPausedRemainingMs(userId, null);
     setNowTick(Date.now());
   }
 
@@ -378,20 +417,38 @@ export function TodayScreen() {
             </Text>
           </View>
           <View style={styles.focusRow}>
-            <Pressable
-              style={[styles.focusButton, isFocusModeActive && styles.focusButtonActive]}
-              onPress={() => void handleStartFocus(45)}
-            >
-              <Text style={styles.focusButtonText}>
-                {isFocusModeActive ? `Focus Active ${focusTimerLabel}` : 'Start 45m Focus Mode'}
-              </Text>
-            </Pressable>
-            <Pressable style={styles.focusGhostButton} onPress={() => void handleStartFocus(25)}>
-              <Text style={styles.focusGhostText}>25m</Text>
-            </Pressable>
-            <Pressable style={styles.focusGhostButton} onPress={() => void handleClearFocus()}>
-              <Text style={styles.focusGhostText}>Clear</Text>
-            </Pressable>
+            <View style={styles.focusPrimaryRow}>
+              <Pressable
+                style={[styles.focusButton, isFocusModeActive && styles.focusButtonActive]}
+                onPress={() => void handleStartFocus(45)}
+              >
+                <Text style={styles.focusButtonText}>
+                  {isFocusModeActive ? `Focus Active ${focusTimerLabel}` : 'Start 45m Focus Mode'}
+                </Text>
+              </Pressable>
+              <Pressable style={styles.focusGhostButton} onPress={() => void handleStartFocus(25)}>
+                <Text style={styles.focusGhostText}>25m</Text>
+              </Pressable>
+              <Pressable style={styles.focusGhostButton} onPress={() => void handleStopFocus()}>
+                <Text style={styles.focusGhostText}>Stop</Text>
+              </Pressable>
+            </View>
+            <View style={styles.focusSecondaryRow}>
+              <Pressable
+                style={[styles.focusGhostButton, !isFocusModeActive && styles.focusGhostDisabled]}
+                onPress={() => void handlePauseFocus()}
+                disabled={!isFocusModeActive}
+              >
+                <Text style={styles.focusGhostText}>Pause</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.focusGhostButton, !hasPausedFocus && styles.focusGhostDisabled]}
+                onPress={() => void handleResumeFocus()}
+                disabled={!hasPausedFocus}
+              >
+                <Text style={styles.focusGhostText}>Resume</Text>
+              </Pressable>
+            </View>
           </View>
           <Text style={styles.historyTitle}>Suggestion History</Text>
           {suggestionHistory.length === 0 ? (
@@ -616,15 +673,26 @@ function createStyles(theme: AppTheme) {
   },
   focusRow: {
     marginTop: 2,
+    gap: 8,
+  },
+  focusPrimaryRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  focusSecondaryRow: {
     flexDirection: 'row',
     gap: 8,
   },
   focusButton: {
     flex: 1,
+    minHeight: 38,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.tabActive,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 9,
+    paddingHorizontal: 10,
   },
   focusButtonActive: {
     backgroundColor: theme.colors.success,
@@ -635,16 +703,22 @@ function createStyles(theme: AppTheme) {
     fontSize: 12,
   },
   focusGhostButton: {
+    minWidth: 68,
+    minHeight: 38,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
     paddingHorizontal: 12,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   focusGhostText: {
     color: theme.colors.textSecondary,
     fontWeight: '700',
     fontSize: 12,
+  },
+  focusGhostDisabled: {
+    opacity: 0.45,
   },
   historyTitle: {
     marginTop: 2,
