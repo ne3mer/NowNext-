@@ -32,16 +32,31 @@ type AuthStore = {
 };
 
 async function postAuth(path: string, body: Record<string, unknown>): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const payload = (await response.json()) as AuthResponse & { error?: string };
-  if (!response.ok || !payload.success) {
-    throw new Error(payload.error ?? 'Authentication failed');
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const text = await response.text();
+    const payload = (text ? JSON.parse(text) : {}) as AuthResponse & { error?: string };
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.error ?? 'Authentication failed');
+    }
+    return payload;
+  } catch (error) {
+    if (error instanceof Error && error.message.toLowerCase().includes('network request failed')) {
+      throw new Error(`Cannot reach backend at ${API_BASE_URL}.`);
+    }
+    if (error instanceof SyntaxError) {
+      throw new Error('Backend returned invalid JSON response.');
+    }
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Authentication failed');
   }
-  return payload;
 }
 
 export const useAuthStore = create<AuthStore>()(

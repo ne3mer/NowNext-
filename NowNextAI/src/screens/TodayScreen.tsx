@@ -7,6 +7,7 @@ import { GoalPulseCard } from '../components/GoalPulseCard';
 import { NowSuggestionCard } from '../components/NowSuggestionCard';
 import { TaskCard } from '../components/TaskCard';
 import { useAuthStore } from '../store/authStore';
+import { usePremiumStore } from '../store/premiumStore';
 import { useTaskStore } from '../store/taskStore';
 import { AppTheme, useAppTheme } from '../theme/theme';
 import {
@@ -16,7 +17,7 @@ import {
   getTaskChain,
   getTopGoalPulse,
 } from '../utils/taskLinks';
-import { getSuggestedTask } from '../utils/taskSuggestion';
+import { getBestTaskSuggestion, getSimpleSuggestion, SuggestionResult } from '../utils/taskSuggestion';
 import { cancelTaskNotification, scheduleDeadlineNotification } from '../utils/notifications';
 
 function dayKey(dateLike: string | Date): string {
@@ -53,12 +54,19 @@ export function TodayScreen() {
   const setLocalTaskMeta = useTaskStore((state) => state.setLocalTaskMeta);
   const hasHydrated = useTaskStore((state) => state.hasHydrated);
   const token = useAuthStore((state) => state.token);
+  const isPremiumUser = usePremiumStore((state) => state.isPremiumUser);
+  const unlockPremium = usePremiumStore((state) => state.unlockPremium);
+  const canUseFreeSuggestion = usePremiumStore((state) => state.canUseFreeSuggestion);
+  const consumeFreeSuggestion = usePremiumStore((state) => state.consumeFreeSuggestion);
   const [celebrationTrigger, setCelebrationTrigger] = useState(0);
+  const [suggestionResult, setSuggestionResult] = useState<SuggestionResult | null>(null);
+  const [simpleSuggestionTask, setSimpleSuggestionTask] = useState<ReturnType<typeof getSimpleSuggestion>>(null);
   const pendingTasks = tasks.filter((task) => !task.completed);
   const completedTasks = tasks.filter((task) => task.completed);
-  const suggestedTask = getSuggestedTask(tasks);
   const tasksById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
-  const suggestionChainLabel = suggestedTask ? chainToLabel(getTaskChain(suggestedTask, tasks)) : null;
+  const selectedSuggestionTask = suggestionResult?.task ?? simpleSuggestionTask;
+  const suggestionChainLabel = selectedSuggestionTask ? chainToLabel(getTaskChain(selectedSuggestionTask, tasks)) : null;
+  const freeSuggestionLocked = !isPremiumUser && !canUseFreeSuggestion();
   const topGoalPulse = useMemo(() => getTopGoalPulse(tasks), [tasks]);
   const completionRate = tasks.length === 0 ? 0 : Math.round((completedTasks.length / tasks.length) * 100);
   const linkedTasksCount = tasks.filter((task) => !!task.parentTaskId).length;
@@ -123,6 +131,40 @@ export function TodayScreen() {
     setLocalTaskMeta(taskId, { parentTaskId });
   }
 
+  function handleSuggestionRequest() {
+    if (isPremiumUser) {
+      const best = getBestTaskSuggestion(tasks);
+      setSuggestionResult(best);
+      setSimpleSuggestionTask(null);
+      return;
+    }
+
+    if (canUseFreeSuggestion()) {
+      const simpleTask = getSimpleSuggestion(tasks);
+      setSimpleSuggestionTask(simpleTask);
+      setSuggestionResult(null);
+      consumeFreeSuggestion();
+      return;
+    }
+
+    Alert.alert(
+      'Unlock Smart AI Suggestions',
+      'Unlock Smart AI Suggestions for €5 one-time to get explanations and unlimited daily insights.',
+      [
+        { text: 'Not now', style: 'cancel' },
+        {
+          text: 'Unlock €5',
+          onPress: () => {
+            unlockPremium();
+            const best = getBestTaskSuggestion(tasks);
+            setSuggestionResult(best);
+            setSimpleSuggestionTask(null);
+          },
+        },
+      ],
+    );
+  }
+
   return (
     <ScrollView
       style={styles.container}
@@ -185,7 +227,14 @@ export function TodayScreen() {
         </View>
       </View>
 
-      <NowSuggestionCard task={suggestedTask} chainLabel={suggestionChainLabel} />
+      <NowSuggestionCard
+        task={selectedSuggestionTask}
+        explanation={suggestionResult?.explanation ?? null}
+        chainLabel={suggestionChainLabel}
+        isPremiumUser={isPremiumUser}
+        freeSuggestionLocked={freeSuggestionLocked}
+        onRequestSuggestion={handleSuggestionRequest}
+      />
 
       {!!topGoalPulse && <GoalPulseCard goalTitle={topGoalPulse.title} score={topGoalPulse.score} />}
 
