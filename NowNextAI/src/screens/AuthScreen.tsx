@@ -104,7 +104,7 @@ function createStyles(theme: AppTheme, isDark: boolean) {
     },
     modePillActive: { backgroundColor: theme.colors.tabActive, borderColor: theme.colors.tabActive },
     modeText: { color: theme.colors.textPrimary, fontWeight: '700' },
-    modeTextActive: { color: '#ffffff' },
+    modeTextActive: { color: theme.colors.background },
     card: {
       marginTop: 16,
       borderRadius: theme.radius.lg,
@@ -132,6 +132,6 @@ function createStyles(theme: AppTheme, isDark: boolean) {
       paddingVertical: 12,
     },
     ctaDisabled: { opacity: 0.6 },
-    ctaText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+    ctaText: { color: theme.colors.background, fontSize: 15, fontWeight: '700' },
   });
 }

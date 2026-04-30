@@ -9,6 +9,8 @@ type CreateTaskInput = {
   priority?: 'low' | 'medium' | 'high';
   status?: 'todo' | 'in_progress' | 'done';
   dueDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
   completedAt?: string | null;
   color?: string;
   order?: number;
@@ -31,6 +33,8 @@ export async function createTask(userId: string, payload: CreateTaskInput) {
     userId,
     ...payload,
     dueDate: payload.dueDate ? new Date(payload.dueDate) : null,
+    startTime: payload.startTime ? new Date(payload.startTime) : null,
+    endTime: payload.endTime ? new Date(payload.endTime) : null,
     completedAt: payload.completedAt ? new Date(payload.completedAt) : null,
     order: nextOrder,
   });
@@ -51,6 +55,12 @@ export async function updateTask(userId: string, taskId: string, payload: Update
   }
   if (payload.completedAt !== undefined) {
     updates.completedAt = payload.completedAt ? new Date(payload.completedAt) : null;
+  }
+  if (payload.startTime !== undefined) {
+    updates.startTime = payload.startTime ? new Date(payload.startTime) : null;
+  }
+  if (payload.endTime !== undefined) {
+    updates.endTime = payload.endTime ? new Date(payload.endTime) : null;
   }
 
   const task = await TaskModel.findOneAndUpdate({ _id: taskId, userId }, updates, { new: true });

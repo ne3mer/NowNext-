@@ -1,5 +1,7 @@
 import { Task } from '../types/task';
 
+export const MIN_PENDING_TASKS_FOR_SUGGESTION = 5;
+
 const PRIORITY_WEIGHT: Record<Task['priority'], number> = {
   high: 50,
   medium: 30,
@@ -25,6 +27,11 @@ export type SuggestionResult = {
   task: Task;
   score: number;
   explanation: string;
+};
+
+type SuggestionOptions = {
+  excludeTaskIds?: string[];
+  contextSeed?: number;
 };
 
 function startOfDay(date: Date): Date {
@@ -86,39 +93,64 @@ function getBreakdown(task: Task, now: Date): ScoreBreakdown {
   };
 }
 
-function getExplanation(task: Task, breakdown: ScoreBreakdown): string {
+function pickBySeed<T>(items: T[], seed: number): T {
+  return items[Math.abs(seed) % items.length];
+}
+
+function getExplanation(task: Task, breakdown: ScoreBreakdown, seed = 0): string {
   const reasons: string[] = [];
   if (breakdown.priority >= 50) {
-    reasons.push('high priority');
+    reasons.push('it has high priority impact');
   } else if (breakdown.priority >= 30) {
-    reasons.push('strong priority');
+    reasons.push('it carries strong priority');
   }
 
   if (breakdown.deadline >= 40) {
-    reasons.push('overdue deadline');
+    reasons.push('it is already overdue');
   } else if (breakdown.deadline >= 30) {
-    reasons.push('due today');
+    reasons.push('it is due today');
   } else if (breakdown.deadline >= 20) {
-    reasons.push('due tomorrow');
+    reasons.push('it is due tomorrow');
   }
 
   if (breakdown.category >= 25) {
-    reasons.push('relevant for today');
+    reasons.push('it is highly relevant for today');
   }
   if (breakdown.status >= 20) {
-    reasons.push('already in progress');
+    reasons.push('you already started it, so finishing it is efficient');
   }
-  if (reasons.length === 0) {
-    return 'This task has the best current balance of urgency and impact.';
-  }
-  return `This task is suggested because it has ${reasons.join(', ')}.`;
+
+  const openers = [
+    'Agent recommendation:',
+    'Smart focus signal:',
+    'Best next move right now:',
+  ];
+  const closers = [
+    'Start now and protect momentum.',
+    'If you finish this, your day unlocks faster.',
+    'This is the highest leverage move in your queue.',
+  ];
+  const fallback = 'it currently has the best urgency and impact balance';
+  const reasonText = reasons.length > 0 ? reasons.join(', ') : fallback;
+
+  return `${pickBySeed(openers, seed)} ${task.title} is selected because ${reasonText}. ${pickBySeed(
+    closers,
+    seed + task.title.length,
+  )}`;
 }
 
-export function getBestTaskSuggestion(tasks: Task[]): SuggestionResult | null {
+export function getBestTaskSuggestion(tasks: Task[], options: SuggestionOptions = {}): SuggestionResult | null {
   const now = new Date();
-  const pendingTasks = tasks.filter((task) => !task.completed);
+  const basePendingTasks = tasks.filter((task) => !task.completed);
+  if (basePendingTasks.length < MIN_PENDING_TASKS_FOR_SUGGESTION) {
+    return null;
+  }
 
-  if (pendingTasks.length === 0) {
+  const excluded = new Set(options.excludeTaskIds ?? []);
+  const pendingTasks = basePendingTasks.filter((task) => !excluded.has(task.id));
+  const pool = pendingTasks.length > 0 ? pendingTasks : basePendingTasks;
+
+  if (pool.length === 0) {
     return null;
   }
 
@@ -126,7 +158,7 @@ export function getBestTaskSuggestion(tasks: Task[]): SuggestionResult | null {
   let bestScore = Number.NEGATIVE_INFINITY;
   let bestBreakdown: ScoreBreakdown | null = null;
 
-  for (const task of pendingTasks) {
+  for (const task of pool) {
     const breakdown = getBreakdown(task, now);
     const score = breakdown.priority + breakdown.deadline + breakdown.category + breakdown.status - breakdown.penalty;
     if (score > bestScore) {
@@ -143,13 +175,13 @@ export function getBestTaskSuggestion(tasks: Task[]): SuggestionResult | null {
   return {
     task: bestTask,
     score: bestScore,
-    explanation: getExplanation(bestTask, bestBreakdown),
+    explanation: getExplanation(bestTask, bestBreakdown, options.contextSeed ?? 0),
   };
 }
 
 export function getSimpleSuggestion(tasks: Task[]): Task | null {
   const pendingTasks = tasks.filter((task) => !task.completed);
-  if (pendingTasks.length === 0) {
+  if (pendingTasks.length < MIN_PENDING_TASKS_FOR_SUGGESTION) {
     return null;
   }
   return [...pendingTasks].sort((a, b) => {

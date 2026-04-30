@@ -77,6 +77,9 @@ export function CreateTaskScreen() {
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState<Date | null>(null);
   const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [endTime, setEndTime] = useState<Date | null>(null);
+  const [timePickerTarget, setTimePickerTarget] = useState<'start' | 'end' | null>(null);
   const [category, setCategory] = useState<TaskCategory>('daily');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [parentTaskId, setParentTaskId] = useState<string | null>(null);
@@ -111,6 +114,17 @@ export function CreateTaskScreen() {
       timeStyle: 'short',
     });
   }, [deadline]);
+  const startTimeLabel = useMemo(
+    () =>
+      startTime
+        ? startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : 'No start time',
+    [startTime],
+  );
+  const endTimeLabel = useMemo(
+    () => (endTime ? endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'No end time'),
+    [endTime],
+  );
 
   const parentCandidates = useMemo(
     () => getParentCandidates(tasks, category).slice(0, 8),
@@ -242,6 +256,25 @@ export function CreateTaskScreen() {
     setPickerMode(null);
   }
 
+  function onChangeTaskTime(event: DateTimePickerEvent, selectedDate?: Date) {
+    if (event.type === 'dismissed') {
+      setTimePickerTarget(null);
+      return;
+    }
+    if (!selectedDate || !timePickerTarget) {
+      setTimePickerTarget(null);
+      return;
+    }
+    const next = new Date();
+    next.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
+    if (timePickerTarget === 'start') {
+      setStartTime(next);
+    } else {
+      setEndTime(next);
+    }
+    setTimePickerTarget(null);
+  }
+
   async function onSubmit() {
     Keyboard.dismiss();
     const normalizedTitle = title.trim();
@@ -262,6 +295,8 @@ export function CreateTaskScreen() {
       parentTaskId,
       priority,
       deadline: deadlineIso,
+      startTime: startTime ? new Date(startTime).toISOString() : null,
+      endTime: endTime ? new Date(endTime).toISOString() : null,
       },
       token,
     );
@@ -281,6 +316,8 @@ export function CreateTaskScreen() {
     setNote('');
     setDescription('');
     setDeadline(null);
+    setStartTime(null);
+    setEndTime(null);
     setCategory('daily');
     setPriority('medium');
     setParentTaskId(null);
@@ -311,6 +348,8 @@ export function CreateTaskScreen() {
     setNote(template.note);
     setDescription('');
     setDeadline(dueDate);
+    setStartTime(null);
+    setEndTime(null);
     setError(null);
     setSuccessMessage(null);
   }
@@ -513,6 +552,26 @@ export function CreateTaskScreen() {
           </Pressable>
         </View>
         <Text style={styles.dateLabel}>{deadlineLabel}</Text>
+        <Text style={styles.label}>Task Time Window (optional)</Text>
+        <View style={styles.dateRow}>
+          <Pressable style={styles.dateButton} onPress={() => setTimePickerTarget('start')}>
+            <Text style={styles.dateButtonText}>{startTime ? 'Change Start' : 'Set Start Time'}</Text>
+          </Pressable>
+          <Pressable style={styles.dateButton} onPress={() => setTimePickerTarget('end')}>
+            <Text style={styles.dateButtonText}>{endTime ? 'Change End' : 'Set End Time'}</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.dateButton, styles.dateButtonClear, !startTime && !endTime && styles.dateButtonDisabled]}
+            onPress={() => {
+              setStartTime(null);
+              setEndTime(null);
+            }}
+            disabled={!startTime && !endTime}
+          >
+            <Text style={styles.dateButtonText}>Clear times</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.dateLabel}>Start: {startTimeLabel} • End: {endTimeLabel}</Text>
         {pickerMode && (
           <DateTimePicker
             value={deadline ?? new Date()}
@@ -522,19 +581,22 @@ export function CreateTaskScreen() {
             minimumDate={pickerMode === 'date' ? new Date() : undefined}
           />
         )}
+        {timePickerTarget && (
+          <DateTimePicker value={new Date()} mode="time" display="default" onChange={onChangeTaskTime} />
+        )}
 
         <View onLayout={onNoteSectionLayout} style={styles.noteWrap}>
           <View style={styles.sectionHeader}>
             <Ionicons name="document-text-outline" size={15} color={theme.colors.textSecondary} />
             <Text style={styles.sectionTitle}>Context note</Text>
           </View>
-          <Text style={styles.label}>Note (optional)</Text>
+          <Text style={styles.label}>Quick Note (optional)</Text>
           <View style={styles.noteCard}>
-            <Text style={styles.noteHelper}>Brain dump freely. This section expands your focus clarity.</Text>
+            <Text style={styles.noteHelper}>One-liner vibe: short, sharp, and instantly scannable on the card.</Text>
             <TextInput
               value={note}
               onChangeText={setNote}
-              placeholder="Add context for this task..."
+              placeholder="e.g. Call before 5pm"
               placeholderTextColor="#94a3b8"
               style={[styles.input, styles.noteInput]}
               multiline
@@ -544,10 +606,11 @@ export function CreateTaskScreen() {
             />
           </View>
           <Text style={styles.label}>Description (optional)</Text>
+          <Text style={styles.noteHelper}>Long-form details, steps, and background info for execution.</Text>
           <TextInput
             value={description}
             onChangeText={setDescription}
-            placeholder="Write more details, context, or steps..."
+            placeholder="Write detailed plan, checklist, or context..."
             placeholderTextColor="#94a3b8"
             style={[styles.input, styles.noteInput]}
             multiline

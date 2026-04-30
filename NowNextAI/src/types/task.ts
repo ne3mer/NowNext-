@@ -17,6 +17,8 @@ export interface Task {
   notificationId: string | null;
   priority: TaskPriority;
   deadline: ISODateString | null;
+  startTime: ISODateString | null;
+  endTime: ISODateString | null;
   completed: boolean;
   createdAt: ISODateString;
   updatedAt: ISODateString;
@@ -31,6 +33,8 @@ export interface CreateTaskInput {
   parentTaskId?: string | null;
   priority: TaskPriority;
   deadline: ISODateString | null;
+  startTime?: ISODateString | null;
+  endTime?: ISODateString | null;
 }
 
 export type UpdateTaskInput = Partial<Omit<CreateTaskInput, 'deadline'>> & {

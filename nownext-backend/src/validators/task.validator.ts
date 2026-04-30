@@ -11,6 +11,8 @@ export const createTaskSchema = z.object({
   priority: taskPriority.default('medium'),
   status: taskStatus.default('todo').optional(),
   dueDate: z.string().datetime().nullable().optional(),
+  startTime: z.string().datetime().nullable().optional(),
+  endTime: z.string().datetime().nullable().optional(),
   completedAt: z.string().datetime().nullable().optional(),
   color: z.string().min(4).max(20).optional(),
   order: z.number().int().optional(),

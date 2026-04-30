@@ -65,3 +65,29 @@ export async function cancelTaskNotification(notificationId: string | null | und
   }
   await Notifications.cancelScheduledNotificationAsync(notificationId);
 }
+
+export async function scheduleFocusEndNotification(minutes: number): Promise<string | null> {
+  if (minutes <= 0) {
+    return null;
+  }
+  const endsAt = Date.now() + minutes * 60 * 1000;
+  const id = await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Focus session completed',
+      body: `Your ${minutes} minute focus sprint is done. Time to review your next move.`,
+      sound: true,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: new Date(endsAt),
+    },
+  });
+  return id;
+}
+
+export async function cancelScheduledNotification(notificationId: string | null | undefined) {
+  if (!notificationId) {
+    return;
+  }
+  await Notifications.cancelScheduledNotificationAsync(notificationId);
+}

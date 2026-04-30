@@ -49,6 +49,8 @@ type BackendTask = {
   priority: TaskPriority;
   status: 'todo' | 'in_progress' | 'done';
   dueDate: string | null;
+  startTime: string | null;
+  endTime: string | null;
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -58,13 +60,15 @@ function fromBackend(task: BackendTask): Task {
   return {
     id: task._id,
     title: task.title,
-    note: task.note ?? task.description ?? undefined,
+    note: task.note ?? undefined,
     description: task.description ?? undefined,
     category: task.category,
     parentTaskId: null,
     notificationId: null,
     priority: task.priority,
     deadline: task.dueDate,
+    startTime: task.startTime,
+    endTime: task.endTime,
     completed: task.status === 'done',
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
@@ -76,10 +80,12 @@ function toBackend(input: CreateTaskInput | UpdateTaskInput) {
   return {
     title: input.title,
     note: input.note,
-    description: input.description ?? input.note,
+    description: input.description,
     category: input.category,
     priority: input.priority,
     dueDate: input.deadline,
+    startTime: input.startTime,
+    endTime: input.endTime,
   };
 }
 

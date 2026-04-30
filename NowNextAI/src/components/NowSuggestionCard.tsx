@@ -10,6 +10,7 @@ type NowSuggestionCardProps = {
   chainLabel?: string | null;
   isPremiumUser: boolean;
   freeSuggestionLocked: boolean;
+  minTasksRequired: boolean;
   onRequestSuggestion: () => void;
 };
 
@@ -19,6 +20,7 @@ export function NowSuggestionCard({
   chainLabel,
   isPremiumUser,
   freeSuggestionLocked,
+  minTasksRequired,
   onRequestSuggestion,
 }: NowSuggestionCardProps) {
   const { theme, isDark } = useAppTheme();
@@ -31,13 +33,34 @@ export function NowSuggestionCard({
       <View style={styles.titleRow}>
         <Ionicons name="flash" size={16} color="#1e3a8a" />
         <Text style={styles.title}>What should I do now?</Text>
+        {isPremiumUser && (
+          <View style={styles.proTag}>
+            <Text style={styles.proTagText}>PRO</Text>
+          </View>
+        )}
       </View>
       <Text style={styles.subtitle}>
-        {task ? task.title : freeSuggestionLocked ? 'Free suggestion used today. Unlock premium for unlimited insights.' : 'Tap below to get a suggestion.'}
+        {task
+          ? task.title
+          : !minTasksRequired
+            ? 'Add at least 5 pending tasks to activate smart suggestions.'
+            : freeSuggestionLocked
+              ? 'Free suggestion used today. Unlock premium for unlimited insights.'
+              : 'Tap below to get a suggestion.'}
       </Text>
-      <Pressable style={styles.ctaButton} onPress={onRequestSuggestion}>
+      <Pressable
+        style={[styles.ctaButton, !minTasksRequired && styles.ctaButtonDisabled]}
+        onPress={onRequestSuggestion}
+        disabled={!minTasksRequired}
+      >
         <Text style={styles.ctaText}>
-          {isPremiumUser ? 'Get Smart Suggestion' : freeSuggestionLocked ? 'Unlock Smart Suggestions - €5' : 'Get Free Suggestion'}
+          {!minTasksRequired
+            ? 'Need 5+ tasks to activate'
+            : isPremiumUser
+              ? 'Get Smart Suggestion'
+              : freeSuggestionLocked
+                ? 'Unlock Smart Suggestions - €5'
+                : 'Get Free Suggestion'}
         </Text>
       </Pressable>
       {task && (
@@ -157,6 +180,22 @@ function createStyles(theme: AppTheme, isDark: boolean) {
     color: isDark ? '#e0f2fe' : '#1e3a8a',
     fontWeight: '700',
     fontSize: 12,
+  },
+  ctaButtonDisabled: {
+    opacity: 0.45,
+  },
+  proTag: {
+    marginLeft: 'auto',
+    borderRadius: 999,
+    backgroundColor: isDark ? '#e0f2fe' : '#1e3a8a',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  proTagText: {
+    color: isDark ? '#0f172a' : '#ffffff',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   });
 }

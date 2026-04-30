@@ -122,7 +122,7 @@ function createStyles(theme: AppTheme, isDark: boolean) {
     paddingVertical: 12,
   },
   ctaText: {
-    color: '#ffffff',
+    color: theme.colors.background,
     fontWeight: '700',
     fontSize: 15,
   },

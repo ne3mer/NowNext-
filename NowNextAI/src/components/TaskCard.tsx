@@ -30,11 +30,13 @@ export function TaskCard({
   const [showActions, setShowActions] = useState(false);
   const [showLinkOptions, setShowLinkOptions] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showQuickNoteModal, setShowQuickNoteModal] = useState(false);
   const [showImpactPath, setShowImpactPath] = useState(false);
   const [activePathNode, setActivePathNode] = useState(0);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editNote, setEditNote] = useState(task.note ?? '');
   const [editDescription, setEditDescription] = useState(task.description ?? '');
+  const [quickNote, setQuickNote] = useState(task.note ?? '');
   const [editError, setEditError] = useState<string | null>(null);
   const linkPulse = useRef(new Animated.Value(0.55)).current;
   const impactAnim = useRef(new Animated.Value(0)).current;
@@ -52,6 +54,7 @@ export function TaskCard({
     setEditTitle(task.title);
     setEditNote(task.note ?? '');
     setEditDescription(task.description ?? '');
+    setQuickNote(task.note ?? '');
     setEditError(null);
   }, [task.description, task.note, task.title]);
 
@@ -106,6 +109,13 @@ export function TaskCard({
     setShowEditModal(false);
   }
 
+  async function handleSaveQuickNote() {
+    await onEditTask?.(task.id, {
+      note: quickNote.trim() || undefined,
+    });
+    setShowQuickNoteModal(false);
+  }
+
   return (
     <Pressable
       style={[styles.card, { backgroundColor: categoryColor }]}
@@ -124,8 +134,40 @@ export function TaskCard({
         </View>
       </View>
       <Text style={[styles.title, task.completed && styles.titleCompleted]}>{task.title}</Text>
-      {!!task.note && <Text style={styles.note}>{task.note}</Text>}
-      {!!task.description && <Text style={styles.note}>{task.description}</Text>}
+      {!!task.note && (
+        <View style={styles.noteBadge}>
+          <Ionicons name="flash-outline" size={11} color={theme.colors.textPrimary} />
+          <Text style={styles.noteBadgeLabel}>Quick Note</Text>
+          <Text style={styles.noteBadgeText} numberOfLines={2}>
+            {task.note}
+          </Text>
+        </View>
+      )}
+      {!!task.description && (
+        <View style={styles.descriptionCard}>
+          <View style={styles.descriptionHeader}>
+            <Ionicons name="reader-outline" size={12} color={theme.colors.textSecondary} />
+            <Text style={styles.descriptionLabel}>Description</Text>
+          </View>
+          <Text style={styles.descriptionText}>{task.description}</Text>
+        </View>
+      )}
+      {(task.startTime || task.endTime) && (
+        <View style={styles.timeWindowRow}>
+          <Ionicons name="time-outline" size={12} color={theme.colors.textSecondary} />
+          <Text style={styles.timeWindowText}>
+            {`Window ${
+              task.startTime
+                ? new Date(task.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : '--:--'
+            } - ${
+              task.endTime
+                ? new Date(task.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : '--:--'
+            }`}
+          </Text>
+        </View>
+      )}
       <Text style={styles.deadline}>
         {task.deadline
           ? `Due ${new Date(task.deadline).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`
@@ -254,6 +296,16 @@ export function TaskCard({
               <Ionicons name="create-outline" size={16} color={theme.colors.textPrimary} />
               <Text style={styles.actionText}>Edit task</Text>
             </Pressable>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => {
+                setShowActions(false);
+                setShowQuickNoteModal(true);
+              }}
+            >
+              <Ionicons name="document-text-outline" size={16} color={theme.colors.textPrimary} />
+              <Text style={styles.actionText}>{task.note ? 'Quick edit note' : 'Quick add note'}</Text>
+            </Pressable>
             <Pressable style={styles.cancelButton} onPress={() => setShowActions(false)}>
               <Text style={styles.cancelText}>Cancel</Text>
             </Pressable>
@@ -335,6 +387,34 @@ export function TaskCard({
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={showQuickNoteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowQuickNoteModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{task.note ? 'Quick edit note' : 'Quick add note'}</Text>
+            <TextInput
+              value={quickNote}
+              onChangeText={setQuickNote}
+              placeholder="Write a quick note..."
+              placeholderTextColor="#94a3b8"
+              style={[styles.editInput, styles.editArea]}
+              multiline
+            />
+            <Pressable style={styles.actionButton} onPress={() => void handleSaveQuickNote()}>
+              <Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.textPrimary} />
+              <Text style={styles.actionText}>Save note</Text>
+            </Pressable>
+            <Pressable style={styles.cancelButton} onPress={() => setShowQuickNoteModal(false)}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </Pressable>
   );
 }
@@ -384,6 +464,67 @@ function createStyles(theme: AppTheme) {
     note: {
       marginTop: theme.spacing.xs,
       color: theme.colors.textSecondary,
+    },
+    noteBadge: {
+      marginTop: theme.spacing.xs,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      paddingHorizontal: 9,
+      paddingVertical: 7,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      flexWrap: 'wrap',
+    },
+    noteBadgeLabel: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: theme.colors.textPrimary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.2,
+    },
+    noteBadgeText: {
+      color: theme.colors.textSecondary,
+      fontSize: 12,
+      flexShrink: 1,
+    },
+    descriptionCard: {
+      marginTop: theme.spacing.xs,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      gap: 4,
+    },
+    descriptionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    descriptionLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: theme.colors.textSecondary,
+    },
+    descriptionText: {
+      color: theme.colors.textSecondary,
+      fontSize: 12,
+      lineHeight: 17,
+    },
+    timeWindowRow: {
+      marginTop: theme.spacing.xs,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    timeWindowText: {
+      color: theme.colors.textSecondary,
+      fontSize: 11,
+      fontWeight: '600',
     },
     deadline: {
       marginTop: theme.spacing.sm,
