@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { OnboardingModal } from './src/components/OnboardingModal';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { AllTasksScreen } from './src/screens/AllTasksScreen';
+import { ControlPanelScreen } from './src/screens/ControlPanelScreen';
 import { CreateTaskScreen } from './src/screens/CreateTaskScreen';
 import { TodayScreen } from './src/screens/TodayScreen';
 import { useAuthStore } from './src/store/authStore';
@@ -22,6 +23,7 @@ type RootTabParamList = {
   Today: undefined;
   Create: undefined;
   Tasks: undefined;
+  Panel: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -149,6 +151,9 @@ export default function App() {
               if (route.name === 'Create') {
                 return <Ionicons name={focused ? 'add-circle' : 'add-circle-outline'} size={iconSize} color={color} />;
               }
+              if (route.name === 'Panel') {
+                return <Ionicons name={focused ? 'grid' : 'grid-outline'} size={iconSize} color={color} />;
+              }
               return <Ionicons name={focused ? 'albums' : 'albums-outline'} size={iconSize} color={color} />;
             },
           })}
@@ -160,6 +165,7 @@ export default function App() {
             component={AllTasksScreen}
             options={{ title: 'All Tasks' }}
           />
+          <Tab.Screen name="Panel" component={ControlPanelScreen} options={{ title: 'Control Panel' }} />
         </Tab.Navigator>
         )}
         <OnboardingModal visible={showOnboarding} onClose={closeOnboarding} />
