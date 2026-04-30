@@ -3,6 +3,7 @@ import { AppError } from '../utils/appError';
 
 type CreateTaskInput = {
   title: string;
+  note?: string;
   description?: string;
   category: string;
   priority?: 'low' | 'medium' | 'high';

@@ -11,6 +11,7 @@ export interface Task {
   id: string;
   title: string;
   note?: string;
+  description?: string;
   category: TaskCategory;
   parentTaskId: string | null;
   notificationId: string | null;
@@ -25,6 +26,7 @@ export interface Task {
 export interface CreateTaskInput {
   title: string;
   note?: string;
+  description?: string;
   category: TaskCategory;
   parentTaskId?: string | null;
   priority: TaskPriority;

@@ -96,6 +96,7 @@ export function TaskCard({
       </View>
       <Text style={[styles.title, task.completed && styles.titleCompleted]}>{task.title}</Text>
       {!!task.note && <Text style={styles.note}>{task.note}</Text>}
+      {!!task.description && <Text style={styles.note}>{task.description}</Text>}
       <Text style={styles.deadline}>
         {task.deadline
           ? `Due ${new Date(task.deadline).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`
@@ -397,7 +398,7 @@ function createStyles(theme: AppTheme) {
       fontWeight: '600',
     },
     timelineNodeTextActive: {
-      color: '#ffffff',
+      color: theme.colors.background,
     },
     timelineConnector: {
       width: 12,

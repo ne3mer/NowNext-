@@ -43,6 +43,7 @@ function sortTasks(tasks: Task[]): Task[] {
 type BackendTask = {
   _id: string;
   title: string;
+  note?: string;
   description?: string;
   category: TaskCategory;
   priority: TaskPriority;
@@ -57,7 +58,8 @@ function fromBackend(task: BackendTask): Task {
   return {
     id: task._id,
     title: task.title,
-    note: task.description ?? undefined,
+    note: task.note ?? task.description ?? undefined,
+    description: task.description ?? undefined,
     category: task.category,
     parentTaskId: null,
     notificationId: null,
@@ -73,7 +75,8 @@ function fromBackend(task: BackendTask): Task {
 function toBackend(input: CreateTaskInput | UpdateTaskInput) {
   return {
     title: input.title,
-    description: input.note,
+    note: input.note,
+    description: input.description ?? input.note,
     category: input.category,
     priority: input.priority,
     dueDate: input.deadline,

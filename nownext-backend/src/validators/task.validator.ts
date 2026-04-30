@@ -5,6 +5,7 @@ export const taskStatus = z.enum(['todo', 'in_progress', 'done']);
 
 export const createTaskSchema = z.object({
   title: z.string().trim().min(1).max(180),
+  note: z.string().trim().max(600).optional(),
   description: z.string().max(2000).optional(),
   category: z.string().trim().min(2).max(40),
   priority: taskPriority.default('medium'),

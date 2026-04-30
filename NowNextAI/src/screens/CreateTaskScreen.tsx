@@ -74,6 +74,7 @@ export function CreateTaskScreen() {
   const categoryError = useCategoryStore((state) => state.error);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
+  const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState<Date | null>(null);
   const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
   const [category, setCategory] = useState<TaskCategory>('daily');
@@ -162,11 +163,14 @@ export function CreateTaskScreen() {
     if (note.trim().length > 0) {
       score += 10;
     }
+    if (description.trim().length > 0) {
+      score += 8;
+    }
     if (parentTaskId) {
       score += 12;
     }
     return Math.min(score, 100);
-  }, [title, deadline, note, parentTaskId]);
+  }, [title, deadline, note, description, parentTaskId]);
 
   useEffect(() => {
     if (title.trim().length === 0) {
@@ -253,6 +257,7 @@ export function CreateTaskScreen() {
       {
       title: normalizedTitle,
       note: note.trim() || undefined,
+      description: description.trim() || undefined,
       category,
       parentTaskId,
       priority,
@@ -274,6 +279,7 @@ export function CreateTaskScreen() {
 
     setTitle('');
     setNote('');
+    setDescription('');
     setDeadline(null);
     setCategory('daily');
     setPriority('medium');
@@ -303,6 +309,7 @@ export function CreateTaskScreen() {
     setCategory(template.category);
     setPriority(template.priority);
     setNote(template.note);
+    setDescription('');
     setDeadline(dueDate);
     setError(null);
     setSuccessMessage(null);
@@ -498,7 +505,7 @@ export function CreateTaskScreen() {
             <Text style={styles.dateButtonText}>{deadline ? 'Pick Time' : 'Select date first'}</Text>
           </Pressable>
           <Pressable
-            style={[styles.dateButton, !deadline && styles.dateButtonDisabled]}
+            style={[styles.dateButton, styles.dateButtonClear, !deadline && styles.dateButtonDisabled]}
             onPress={() => setDeadline(null)}
             disabled={!deadline}
           >
@@ -536,6 +543,17 @@ export function CreateTaskScreen() {
               onFocus={focusNoteField}
             />
           </View>
+          <Text style={styles.label}>Description (optional)</Text>
+          <TextInput
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Write more details, context, or steps..."
+            placeholderTextColor="#94a3b8"
+            style={[styles.input, styles.noteInput]}
+            multiline
+            returnKeyType="done"
+            onSubmitEditing={Keyboard.dismiss}
+          />
         </View>
 
         {!!error && <Text style={styles.errorText}>{error}</Text>}
@@ -745,7 +763,7 @@ function createStyles(theme: AppTheme, isDark: boolean) {
     paddingVertical: 10,
   },
   addCategoryText: {
-    color: '#ffffff',
+    color: theme.colors.background,
     fontWeight: '700',
   },
     linkGrid: {
@@ -770,20 +788,26 @@ function createStyles(theme: AppTheme, isDark: boolean) {
       fontWeight: '600',
     },
     linkPillTextActive: {
-      color: '#ffffff',
+      color: theme.colors.background,
     },
   dateRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing.xs,
   },
   dateButton: {
-    flex: 1,
+    minWidth: '48%',
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
     paddingVertical: 10,
+    paddingHorizontal: 10,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: isDark ? '#111827' : '#ffffff',
+  },
+  dateButtonClear: {
+    minWidth: '100%',
   },
   dateButtonDisabled: {
     opacity: 0.45,
@@ -791,6 +815,8 @@ function createStyles(theme: AppTheme, isDark: boolean) {
   dateButtonText: {
     color: theme.colors.textPrimary,
     fontWeight: '600',
+    fontSize: 12,
+    textAlign: 'center',
   },
   dateLabel: {
     marginTop: theme.spacing.xs,
@@ -814,7 +840,7 @@ function createStyles(theme: AppTheme, isDark: boolean) {
     fontWeight: '600',
   },
   pillTextActive: {
-    color: '#ffffff',
+    color: theme.colors.background,
   },
   errorText: {
     marginTop: theme.spacing.sm,
@@ -834,7 +860,7 @@ function createStyles(theme: AppTheme, isDark: boolean) {
     paddingVertical: 12,
   },
   submitText: {
-    color: '#ffffff',
+    color: theme.colors.background,
     fontSize: 16,
     fontWeight: '700',
   },

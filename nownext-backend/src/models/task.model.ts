@@ -14,6 +14,12 @@ const taskSchema = new mongoose.Schema(
       trim: true,
       maxlength: 180,
     },
+    note: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: 600,
+    },
     description: {
       type: String,
       default: '',
