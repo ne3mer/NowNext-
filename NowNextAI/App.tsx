@@ -9,9 +9,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { OnboardingModal } from './src/components/OnboardingModal';
 import { AuthScreen } from './src/screens/AuthScreen';
-import { AllTasksScreen } from './src/screens/AllTasksScreen';
 import { ControlPanelScreen } from './src/screens/ControlPanelScreen';
 import { CreateTaskScreen } from './src/screens/CreateTaskScreen';
+import { PlannerScreen } from './src/screens/PlannerScreen';
 import { TodayScreen } from './src/screens/TodayScreen';
 import { useAuthStore } from './src/store/authStore';
 import { useCategoryStore } from './src/store/categoryStore';
@@ -22,7 +22,7 @@ import { ensureNotificationsBootstrapped } from './src/utils/notifications';
 type RootTabParamList = {
   Today: undefined;
   Create: undefined;
-  Tasks: undefined;
+  Planner: undefined;
   Panel: undefined;
 };
 
@@ -129,17 +129,28 @@ export default function App() {
             tabBarActiveTintColor: theme.colors.tabActive,
             tabBarInactiveTintColor: theme.colors.tabInactive,
             tabBarStyle: {
-              borderTopColor: theme.colors.border,
+              position: 'absolute',
+              left: 14,
+              right: 14,
+              bottom: 12,
+              borderTopColor: 'transparent',
               backgroundColor: theme.colors.surface,
-              height: 78,
+              height: 66,
+              borderRadius: 20,
               paddingTop: 8,
-              paddingBottom: 14,
+              paddingBottom: 8,
+              paddingHorizontal: 8,
+              shadowColor: '#0f172a',
+              shadowOpacity: 0.18,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 8 },
+              elevation: 8,
             },
             tabBarItemStyle: {
-              paddingVertical: 2,
+              borderRadius: 14,
             },
             tabBarLabelStyle: {
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: '600',
             },
             tabBarIcon: ({ color, size, focused }) => {
@@ -151,6 +162,9 @@ export default function App() {
               if (route.name === 'Create') {
                 return <Ionicons name={focused ? 'add-circle' : 'add-circle-outline'} size={iconSize} color={color} />;
               }
+              if (route.name === 'Planner') {
+                return <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={iconSize} color={color} />;
+              }
               if (route.name === 'Panel') {
                 return <Ionicons name={focused ? 'grid' : 'grid-outline'} size={iconSize} color={color} />;
               }
@@ -160,11 +174,7 @@ export default function App() {
         >
           <Tab.Screen name="Today" component={TodayScreen} />
           <Tab.Screen name="Create" component={CreateTaskScreen} />
-          <Tab.Screen
-            name="Tasks"
-            component={AllTasksScreen}
-            options={{ title: 'All Tasks' }}
-          />
+          <Tab.Screen name="Planner" component={PlannerScreen} options={{ title: 'Planner' }} />
           <Tab.Screen name="Panel" component={ControlPanelScreen} options={{ title: 'Control Panel' }} />
         </Tab.Navigator>
         )}
