@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { useTaskStore } from '../store/taskStore';
+import { ScreenAuraBackground } from '../components/ScreenAuraBackground';
 import { AppTheme, useAppTheme } from '../theme/theme';
 import { TASK_CATEGORIES, TASK_PRIORITIES, Task, TaskCategory, TaskPriority } from '../types/task';
 import { getParentCandidates } from '../utils/taskLinks';
@@ -365,10 +366,11 @@ export function CreateTaskScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={styles.screenShell}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 22}
     >
+      <ScreenAuraBackground theme={theme} variant="violet" />
       <ScrollView
         ref={scrollRef}
         style={styles.container}
@@ -635,9 +637,13 @@ export function CreateTaskScreen() {
 
 function createStyles(theme: AppTheme, isDark: boolean) {
   return StyleSheet.create({
-  container: {
+  screenShell: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   content: {
     padding: theme.spacing.lg,

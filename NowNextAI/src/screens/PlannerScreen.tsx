@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScreenAuraBackground } from '../components/ScreenAuraBackground';
 import { TaskCard } from '../components/TaskCard';
 import { useAuthStore } from '../store/authStore';
 import { useTaskStore } from '../store/taskStore';
@@ -67,12 +68,14 @@ export function PlannerScreen() {
   }, [selectedDay, tasksByDay, theme.colors.success, theme.colors.tabActive]);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + theme.spacing.lg }]}
-    >
-      <Text style={styles.title}>Planner Calendar</Text>
-      <Text style={styles.subtitle}>Touch a day and manage everything visually.</Text>
+    <View style={styles.screenShell}>
+      <ScreenAuraBackground theme={theme} variant="sunset" />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + theme.spacing.lg }]}
+      >
+        <Text style={styles.title}>Planner Calendar</Text>
+        <Text style={styles.subtitle}>Touch a day and manage everything visually.</Text>
 
       <View style={styles.calendarCard}>
         <Calendar
@@ -116,15 +119,20 @@ export function PlannerScreen() {
           ))}
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-    container: {
+    screenShell: {
       flex: 1,
       backgroundColor: theme.colors.background,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: 'transparent',
     },
     content: {
       padding: theme.spacing.lg,

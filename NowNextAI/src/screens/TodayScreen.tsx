@@ -6,6 +6,7 @@ import { CompletionCelebration } from '../components/CompletionCelebration';
 import { GoalPulseCard } from '../components/GoalPulseCard';
 import { NowSuggestionCard } from '../components/NowSuggestionCard';
 import { PremiumPaywallModal } from '../components/PremiumPaywallModal';
+import { ScreenAuraBackground } from '../components/ScreenAuraBackground';
 import { TaskCard } from '../components/TaskCard';
 import { useAuthStore } from '../store/authStore';
 import { usePremiumStore } from '../store/premiumStore';
@@ -339,11 +340,13 @@ export function TodayScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + theme.spacing.lg }]}
-    >
-      <CompletionCelebration trigger={celebrationTrigger} theme={theme} />
+    <View style={styles.screenShell}>
+      <ScreenAuraBackground theme={theme} variant="blue" />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + theme.spacing.lg }]}
+      >
+        <CompletionCelebration trigger={celebrationTrigger} theme={theme} />
       <PremiumPaywallModal
         visible={showPaywall}
         onClose={() => setShowPaywall(false)}
@@ -528,15 +531,20 @@ export function TodayScreen() {
           </View>
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
-  container: {
+  screenShell: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   content: {
     padding: theme.spacing.lg,

@@ -4,10 +4,12 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { OnboardingModal } from './src/components/OnboardingModal';
+import { CreativeTabBar } from './src/navigation/CreativeTabBar';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { ControlPanelScreen } from './src/screens/ControlPanelScreen';
 import { CreateTaskScreen } from './src/screens/CreateTaskScreen';
@@ -106,6 +108,7 @@ export default function App() {
           <AuthScreen />
         ) : (
         <Tab.Navigator
+          tabBar={(props) => <CreativeTabBar {...props} isDark={isDark} />}
           screenOptions={({ route }) => ({
             headerTitleAlign: 'center',
             headerStyle: {
@@ -130,28 +133,52 @@ export default function App() {
             tabBarInactiveTintColor: theme.colors.tabInactive,
             tabBarStyle: {
               position: 'absolute',
-              left: 14,
-              right: 14,
-              bottom: 12,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderTopWidth: 0,
               borderTopColor: 'transparent',
-              backgroundColor: theme.colors.surface,
-              height: 66,
-              borderRadius: 20,
-              paddingTop: 8,
-              paddingBottom: 8,
-              paddingHorizontal: 8,
-              shadowColor: '#0f172a',
-              shadowOpacity: 0.18,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 8 },
-              elevation: 8,
+              backgroundColor: 'transparent',
+              height: 72,
+              borderRadius: 24,
+              paddingTop: 6,
+              paddingBottom: 4,
+              paddingHorizontal: 4,
+              elevation: 0,
+              shadowOpacity: 0,
             },
-            tabBarItemStyle: {
-              borderRadius: 14,
-            },
-            tabBarLabelStyle: {
-              fontSize: 11,
-              fontWeight: '600',
+            tabBarItemStyle:
+              route.name === 'Create'
+                ? { marginTop: -22, paddingTop: 0 }
+                : { borderRadius: 16, paddingTop: 4 },
+            tabBarLabel: ({ focused, color, children }) => {
+              if (route.name === 'Create') {
+                return (
+                  <Text
+                    style={{
+                      color: focused ? theme.colors.tabActive : theme.colors.tabInactive,
+                      fontSize: 10,
+                      fontWeight: '700',
+                      marginTop: 2,
+                      letterSpacing: 0.3,
+                    }}
+                  >
+                    New
+                  </Text>
+                );
+              }
+              return (
+                <Text
+                  style={{
+                    color,
+                    fontSize: 11,
+                    fontWeight: focused ? '700' : '600',
+                    marginTop: 2,
+                  }}
+                >
+                  {children}
+                </Text>
+              );
             },
             tabBarIcon: ({ color, size, focused }) => {
               const iconSize = focused ? size + 2 : size;
@@ -160,7 +187,16 @@ export default function App() {
                 return <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={iconSize} color={color} />;
               }
               if (route.name === 'Create') {
-                return <Ionicons name={focused ? 'add-circle' : 'add-circle-outline'} size={iconSize} color={color} />;
+                return (
+                  <LinearGradient
+                    colors={focused ? ['#6366f1', '#8b5cf6'] : ['#818cf8', '#a78bfa']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.createFab}
+                  >
+                    <Ionicons name="add" size={30} color="#ffffff" />
+                  </LinearGradient>
+                );
               }
               if (route.name === 'Planner') {
                 return <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={iconSize} color={color} />;
@@ -173,7 +209,7 @@ export default function App() {
           })}
         >
           <Tab.Screen name="Today" component={TodayScreen} />
-          <Tab.Screen name="Create" component={CreateTaskScreen} />
+          <Tab.Screen name="Create" component={CreateTaskScreen} options={{ tabBarLabel: 'New' }} />
           <Tab.Screen name="Planner" component={PlannerScreen} options={{ title: 'Planner' }} />
           <Tab.Screen name="Panel" component={ControlPanelScreen} options={{ title: 'Control Panel' }} />
         </Tab.Navigator>
@@ -183,3 +219,24 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  createFab: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#6366f1',
+        shadowOpacity: 0.45,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 8 },
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
+  },
+});
