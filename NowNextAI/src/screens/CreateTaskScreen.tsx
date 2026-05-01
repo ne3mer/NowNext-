@@ -14,7 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useAuthStore } from '../store/authStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { useTaskStore } from '../store/taskStore';
@@ -63,7 +63,7 @@ const QUICK_TEMPLATES: Array<{
 ];
 
 export function CreateTaskScreen() {
-  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { theme, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
   const createTask = useTaskStore((state) => state.createTask);
@@ -376,7 +376,7 @@ export function CreateTaskScreen() {
         style={styles.container}
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: insets.bottom + keyboardHeight + theme.spacing.lg },
+          { paddingBottom: tabBarHeight + keyboardHeight + theme.spacing.lg },
         ]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}

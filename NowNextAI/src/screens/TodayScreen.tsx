@@ -1,7 +1,7 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CompletionCelebration } from '../components/CompletionCelebration';
 import { GoalPulseCard } from '../components/GoalPulseCard';
 import { NowSuggestionCard } from '../components/NowSuggestionCard';
@@ -60,7 +60,7 @@ function computeStreak(completedAtDates: string[]): number {
 }
 
 export function TodayScreen() {
-  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const tasks = useTaskStore((state) => state.tasks);
@@ -344,7 +344,7 @@ export function TodayScreen() {
       <ScreenAuraBackground theme={theme} variant="blue" />
       <ScrollView
         style={styles.container}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + theme.spacing.lg }]}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + theme.spacing.lg }]}
       >
         <CompletionCelebration trigger={celebrationTrigger} theme={theme} />
       <PremiumPaywallModal

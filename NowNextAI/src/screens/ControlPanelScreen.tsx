@@ -1,12 +1,12 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore';
 import { useTaskStore } from '../store/taskStore';
 import { AppTheme, useAppTheme } from '../theme/theme';
 
 export function ControlPanelScreen() {
-  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { theme, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
   const tasks = useTaskStore((state) => state.tasks);
@@ -36,7 +36,7 @@ export function ControlPanelScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + theme.spacing.lg }]}
+      contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + theme.spacing.lg }]}
     >
       <Text style={styles.title}>Control Panel</Text>
       <Text style={styles.subtitle}>Everything in one place. Read signals, understand performance.</Text>

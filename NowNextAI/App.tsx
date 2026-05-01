@@ -5,10 +5,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { OnboardingModal } from './src/components/OnboardingModal';
+import { NowNextTabBar } from './src/navigation/NowNextTabBar';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { ControlPanelScreen } from './src/screens/ControlPanelScreen';
 import { CreateTaskScreen } from './src/screens/CreateTaskScreen';
@@ -107,6 +108,14 @@ export default function App() {
           <AuthScreen />
         ) : (
         <Tab.Navigator
+          tabBar={(props) => (
+            <NowNextTabBar
+              {...props}
+              isDark={isDark}
+              activeTint={isDark ? '#f8fafc' : '#0f172a'}
+              inactiveTint={isDark ? 'rgba(248,250,252,0.38)' : 'rgba(15,23,42,0.4)'}
+            />
+          )}
           screenOptions={({ route }) => ({
             headerTitleAlign: 'center',
             headerStyle: {
@@ -129,93 +138,26 @@ export default function App() {
             ),
             tabBarActiveTintColor: theme.colors.tabActive,
             tabBarInactiveTintColor: theme.colors.tabInactive,
-            tabBarBackground: () => (
-              <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                <LinearGradient
-                  colors={
-                    isDark
-                      ? (['#0c1222', '#151b2e', '#1a1033'] as const)
-                      : (['#ffffff', '#f0f4ff', '#ede9fe'] as const)
-                  }
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFillObject}
-                />
-                <View
-                  style={[
-                    styles.tabBarGlow,
-                    { backgroundColor: isDark ? 'rgba(99,102,241,0.14)' : 'rgba(99,102,241,0.1)' },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.tabBarRim,
-                    {
-                      borderColor: isDark ? 'rgba(148,163,184,0.18)' : 'rgba(99,102,241,0.22)',
-                    },
-                  ]}
-                />
-              </View>
-            ),
+            tabBarShowLabel: false,
             tabBarStyle: {
               position: 'absolute',
-              left: 12,
-              right: 12,
-              bottom: 10,
+              left: 0,
+              right: 0,
+              bottom: 0,
               borderTopWidth: 0,
-              borderTopColor: 'transparent',
               backgroundColor: 'transparent',
-              height: 74,
-              borderRadius: 26,
-              paddingTop: 6,
-              paddingBottom: 6,
-              paddingHorizontal: 6,
-              ...Platform.select({
-                ios: {
-                  shadowColor: '#4f46e5',
-                  shadowOpacity: 0.2,
-                  shadowRadius: 18,
-                  shadowOffset: { width: 0, height: 10 },
-                },
-                android: {
-                  elevation: 12,
-                },
-              }),
+              height: 128,
+              elevation: 0,
+              shadowOpacity: 0,
             },
-            tabBarItemStyle:
-              route.name === 'Create'
-                ? { marginTop: -22, paddingTop: 0 }
-                : { borderRadius: 16, paddingTop: 4 },
-            tabBarLabel: ({ focused, color, position, children }) => {
-              if (route.name === 'Create') {
-                return (
-                  <Text
-                    style={{
-                      color: focused ? theme.colors.tabActive : theme.colors.tabInactive,
-                      fontSize: 10,
-                      fontWeight: '700',
-                      marginTop: position === 'beside-icon' ? 0 : 2,
-                      letterSpacing: 0.3,
-                    }}
-                  >
-                    New
-                  </Text>
-                );
-              }
-              const labelText = typeof children === 'string' ? children : String(children ?? '');
-              return (
-                <Text
-                  style={{
-                    color,
-                    fontSize: 11,
-                    fontWeight: focused ? '700' : '600',
-                    marginTop: position === 'beside-icon' ? 0 : 2,
-                  }}
-                >
-                  {labelText}
-                </Text>
-              );
-            },
+            tabBarLabel:
+              route.name === 'Today'
+                ? 'Today'
+                : route.name === 'Create'
+                  ? 'New'
+                  : route.name === 'Planner'
+                    ? 'Plan'
+                    : 'Hub',
             tabBarIcon: ({ color, size, focused }) => {
               const iconSize = focused ? size + 2 : size;
 
@@ -225,12 +167,16 @@ export default function App() {
               if (route.name === 'Create') {
                 return (
                   <LinearGradient
-                    colors={focused ? ['#6366f1', '#8b5cf6'] : ['#818cf8', '#a78bfa']}
+                    colors={
+                      focused
+                        ? (['#22d3ee', '#a855f7', '#ec4899'] as const)
+                        : (['#38bdf8', '#c084fc', '#f472b6'] as const)
+                    }
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.createFab}
                   >
-                    <Ionicons name="add" size={30} color="#ffffff" />
+                    <Ionicons name="add" size={32} color="#ffffff" />
                   </LinearGradient>
                 );
               }
@@ -258,9 +204,9 @@ export default function App() {
 
 const styles = StyleSheet.create({
   createFab: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     justifyContent: 'center',
     alignItems: 'center',
     ...Platform.select({
@@ -274,19 +220,5 @@ const styles = StyleSheet.create({
         elevation: 12,
       },
     }),
-  },
-  tabBarGlow: {
-    position: 'absolute',
-    top: -38,
-    left: '18%',
-    right: '18%',
-    height: 54,
-    borderRadius: 999,
-  },
-  tabBarRim: {
-    ...StyleSheet.absoluteFillObject,
-    margin: 4,
-    borderRadius: 22,
-    borderWidth: 1,
   },
 });

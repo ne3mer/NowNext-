@@ -1,7 +1,7 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenAuraBackground } from '../components/ScreenAuraBackground';
 import { TaskCard } from '../components/TaskCard';
 import { useAuthStore } from '../store/authStore';
@@ -18,7 +18,7 @@ function toDayKey(dateLike: string) {
 }
 
 export function PlannerScreen() {
-  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { theme, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const tasks = useTaskStore((state) => state.tasks);
@@ -72,7 +72,7 @@ export function PlannerScreen() {
       <ScreenAuraBackground theme={theme} variant="sunset" />
       <ScrollView
         style={styles.container}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + theme.spacing.lg }]}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + theme.spacing.lg }]}
       >
         <Text style={styles.title}>Planner Calendar</Text>
         <Text style={styles.subtitle}>Touch a day and manage everything visually.</Text>
